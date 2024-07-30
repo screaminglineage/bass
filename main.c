@@ -223,7 +223,7 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
     if (!eval_rval(state, arg2, &arg2_val)) {
         return false;
     }
-    if (!eval_rval(state, arg2, &arg3_val)) {
+    if (!eval_rval(state, arg3, &arg3_val)) {
         return false;
     }
 
@@ -234,6 +234,28 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
             }
             return true;
         } break;
+
+        case OP_SUB: {
+            if (!set_lval(state, arg1, arg2_val - arg3_val)) {
+                return false;
+            }
+            return true;
+        } break;
+
+        case OP_MUL: {
+            if (!set_lval(state, arg1, arg2_val * arg3_val)) {
+                return false;
+            }
+            return true;
+        } break;
+
+        case OP_DIV: {
+            if (!set_lval(state, arg1, arg2_val / arg3_val)) {
+                return false;
+            }
+            return true;
+        } break;
+
         default:
             assert(false && "Unimplemented");
         break;
@@ -241,6 +263,10 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
 }
 
 bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
+    (void)state;
+    (void)op;
+    (void)arg1;
+    (void)arg2;
     return false;
 }
 
@@ -267,6 +293,7 @@ void execute(State *state, Tokens tokens, OpCodes opcodes) {
 
 
 int main(int argc, char **argv) {
+    (void)argc;
     char *source = read_to_string(argv[1]);
     Tokens tokens = {0};
     OpCodes opcodes = {0};
@@ -278,6 +305,6 @@ int main(int argc, char **argv) {
 
     State state = {0};
     execute(&state, tokens, opcodes);
-    printf("state.registers[0] = %d\n", state.registers[0]);
+    printf("state.registers[0] = %d\n", state.registers[1]);
     return 0;
 }
