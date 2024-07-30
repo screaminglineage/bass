@@ -153,23 +153,112 @@ void opcodes_print(Tokens tokens, OpCodes opcodes) {
     putchar('\n');
 }
 
-void execute(Tokens tokens, OpCodes opcodes) {
+typedef struct {
     int registers[8];
+} State;
 
+bool eval_rval(State *state, Token token, int *value) {
+    switch (token.type) {
+        case TOK_VALUE: {
+            char *end;
+            *value = (int)strtol(token.value, &end, 0);
+            if (*end) {
+                printf("bass: incorrect integer literal");
+                return false;
+            }
+            return true;
+        } break;
+        case TOK_ADDRESS:
+            assert(false && "Unimplemented");
+        break;
+        case TOK_REGISTER: {
+            if (token.value[0] && token.value[1] && token.value[0] != 'r') {
+                printf("bass: invalid register\n");
+                return false;
+            }
+            int reg_num = token.value[1] - 48;
+            if (reg_num < 0 || reg_num >= 8) {
+                printf("bass: invalid register\n");
+                return false;
+            }
+            *value = state->registers[reg_num];
+            return true;
+        } break;
+        case TOK_OPCODE:
+            printf("bass: Opcodes cannot be rvalues!");
+            return false;
+        break;
+    }
+    return true;
+}
+
+bool set_lval(State *state, Token lval, int rval) {
+    switch (lval.type) {
+        case TOK_REGISTER: {
+            if (lval.value[0] && lval.value[1] && lval.value[0] != 'r') {
+                printf("bass: invalid register\n");
+                return false;
+            }
+            int reg_num = lval.value[1] - 48;
+            if (reg_num < 0 || reg_num >= 8) {
+                printf("bass: invalid register\n");
+                return false;
+            }
+            state->registers[reg_num] = rval;
+            return true;
+        } break;
+        case TOK_ADDRESS: {
+            assert(false && "Unimplemented");
+        } break;
+        default:
+            printf("bass: lvalue: `%s`, is neither register nor a memory address", lval.value);
+            return false;
+        break;
+
+    }
+}
+
+bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
+    int arg2_val, arg3_val;
+    if (!eval_rval(state, arg2, &arg2_val)) {
+        return false;
+    }
+    if (!eval_rval(state, arg2, &arg3_val)) {
+        return false;
+    }
+
+    switch (op) {
+        case OP_ADD: {
+            if (!set_lval(state, arg1, arg2_val + arg3_val)) {
+                return false;
+            }
+            return true;
+        } break;
+        default:
+            assert(false && "Unimplemented");
+        break;
+    }
+}
+
+bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
+    return false;
+}
+
+void execute(State *state, Tokens tokens, OpCodes opcodes) {
     for (size_t i = 0; i < opcodes.size; i++) {
-        Opcode op = opcodes.data[i];
-        switch (op.end - op.start) {
-            case 3:
+        OpCode op = opcodes.data[i];
+        switch (op.end - op.start - 1) {
+            case 3: {
                 Token arg1 = tokens.data[op.start + 1];
                 Token arg2 = tokens.data[op.start + 2];
                 Token arg3 = tokens.data[op.start + 3];
-                eval_3(tokens.data[op.start].op, arg1, arg2, arg3);
-            break;
-            case 2:
+                eval_3(state, tokens.data[op.start].op, arg1, arg2, arg3);
+            } break;
+            case 2: {
                 Token arg1 = tokens.data[op.start + 1];
                 Token arg2 = tokens.data[op.start + 2];
-                eval_2(tokens.data[op.start].op, arg1, arg2);
-            break;
+                eval_2(state, tokens.data[op.start].op, arg1, arg2);
+            } break;
             default:
                 assert(false && "Unimplemented!");
         }
@@ -177,8 +266,8 @@ void execute(Tokens tokens, OpCodes opcodes) {
 }
 
 
-int main() {
-    char *source = read_to_string("main.bass");
+int main(int argc, char **argv) {
+    char *source = read_to_string(argv[1]);
     Tokens tokens = {0};
     OpCodes opcodes = {0};
     if (!parse_source(source, &tokens, &opcodes)) {
@@ -186,5 +275,9 @@ int main() {
     }
     tokens_print(tokens);
     opcodes_print(tokens, opcodes);
+
+    State state = {0};
+    execute(&state, tokens, opcodes);
+    printf("state.registers[0] = %d\n", state.registers[0]);
     return 0;
 }
