@@ -89,6 +89,7 @@ bool is_opcode(const char *token, Operation *op) {
     return false;
 }
 
+// TODO: parse the register values here
 bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     const char *delims = " \n";
     char *token = strtok(source, delims);
@@ -265,11 +266,18 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
 }
 
 bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
-    (void)state;
-    (void)op;
-    (void)arg1;
-    (void)arg2;
-    return false;
+    int arg2_val;
+    if (!eval_rval(state, arg2, &arg2_val)) {
+        return false;
+    }
+
+    switch (op) {
+        case OP_MOVE: {
+            return set_lval(state, arg1, arg2_val);
+        } break;
+        default:
+            assert(false && "Unreachable!");
+    }
 }
 
 
