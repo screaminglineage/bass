@@ -17,6 +17,7 @@ do {                                                                         \
 } while (0)
 
 typedef enum {
+    OP_NO,
     OP_ADD,
     OP_SUB,
     OP_MUL,
@@ -28,6 +29,7 @@ typedef enum {
 } Operation;
 
 const char *OPERATIONS[OP_COUNT] = {
+    [OP_NO]    =    "nop",
     [OP_ADD]    =   "add",
     [OP_SUB]    =   "sub",
     [OP_MUL]    =   "mul",
@@ -268,9 +270,21 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
             return true;
         } break;
 
-        default:
-            assert(false && "Unimplemented");
-        break;
+        case OP_MOD: {
+            if (arg3_val == 0) {
+                printf("bass: attempt to divide by 0\n");
+                return false;
+            }
+            if (!set_lval(state, arg1, arg2_val % arg3_val)) {
+                return false;
+            }
+            return true;
+        } break;
+
+        default: {
+            printf("bass: opcode: `%s` does not take 3 arguments\n", OPERATIONS[op]);
+            return false;
+        }
     }
 }
 
@@ -284,8 +298,10 @@ bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
         case OP_MOVE: {
             return set_lval(state, arg1, arg2_val);
         } break;
-        default:
-            assert(false && "Unreachable!");
+        default: {
+            printf("bass: opcode: `%s` does not take 2 arguments\n", OPERATIONS[op]);
+            return false;
+        }
     }
 }
 
@@ -315,6 +331,16 @@ bool execute_opcode(State *state, Tokens tokens, OpCode op) {
             }
             return false;
         } break;
+
+        case 0: {
+            if (tokens.data[op.start].op == OP_NO) {
+                // nop does nothing
+                return true;
+            }
+            printf("bass: opcode: `%s` does not take 0 arguments\n", OPERATIONS[tokens.data[op.start].op]);
+            return false;
+        } break;
+
         default:
             assert(false && "Unreachable!");
     }
