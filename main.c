@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#define REG_COUNT 8
+
 #define dyn_append(da, item)                                                      \
 do {                                                                         \
     if ((da)->size == (da)->capacity) {                                        \
@@ -45,7 +47,10 @@ typedef enum {
 typedef struct {
     char *value;
     TokenType type;
-    Operation op; // only valid if it is an opcode
+    union {
+        Operation op; // only valid if it is an opcode
+        int register_num;
+    };
 } Token;
 
 typedef struct {
@@ -89,7 +94,21 @@ bool is_opcode(const char *token, Operation *op) {
     return false;
 }
 
-// TODO: parse the register values here
+bool is_register(char *token, int *register_num) {
+    if (!(token[0] && token[1] && !token[2] && token[0] == 'r')) {
+        printf("bass: invalid register: `%s`\n", token);
+        return false;
+    }
+    int num = token[1] - 48;
+    if (num < 0 || num >= REG_COUNT) {
+        printf("bass: invalid register: `%s`\n", token);
+        return false;
+    }
+    *register_num = num;
+    return true;
+}
+
+
 bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     const char *delims = " \n";
     char *token = strtok(source, delims);
@@ -98,17 +117,21 @@ bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     size_t op_end = 0;
     size_t line = 1;
     Operation op;
+    int register_num;
 
     while (token != NULL) {
         token[strcspn(token, "\n")] = 0;
         if (token[0] == '#') {
-            dyn_append(tokens, ((Token){token + 1, TOK_VALUE, -1}));
+            dyn_append(tokens, ((Token){token + 1, TOK_VALUE, {0}}));
         } else if (token[0] == '@') {
-            dyn_append(tokens, ((Token){token + 1, TOK_ADDRESS, -1}));
+            dyn_append(tokens, ((Token){token + 1, TOK_ADDRESS, {0}}));
         } else if (token[0] == 'r') {
-            dyn_append(tokens, ((Token){token, TOK_REGISTER, -1}));
+            if (!is_register(token, &register_num)) {
+                return false;
+            }
+            dyn_append(tokens, ((Token){token, TOK_REGISTER, {.register_num = register_num} }));
         } else if (is_opcode(token, &op)) {
-            dyn_append(tokens, ((Token){token, TOK_OPCODE, op}));
+            dyn_append(tokens, ((Token){token, TOK_OPCODE, {.op = op} }));
             if (op_start != op_end) {
                 dyn_append(opcodes, ((OpCode){op_start, op_end}));
                 op_start = op_end;
@@ -157,7 +180,7 @@ void opcodes_print(Tokens tokens, OpCodes opcodes) {
 }
 
 typedef struct {
-    int registers[8];
+    int registers[REG_COUNT];
 } State;
 
 bool eval_rval(State *state, Token token, int *value) {
@@ -175,16 +198,7 @@ bool eval_rval(State *state, Token token, int *value) {
             assert(false && "Unimplemented");
         break;
         case TOK_REGISTER: {
-            if (!(token.value[0] && token.value[1] && !token.value[2] && token.value[0] == 'r')) {
-                printf("bass: invalid register: `%s`\n", token.value);
-                return false;
-            }
-            int reg_num = token.value[1] - 48;
-            if (reg_num < 0 || reg_num >= 8) {
-                printf("bass: invalid register: `%s`\n", token.value);
-                return false;
-            }
-            *value = state->registers[reg_num];
+            *value = state->registers[token.register_num];
             return true;
         } break;
         case TOK_OPCODE:
@@ -198,16 +212,7 @@ bool eval_rval(State *state, Token token, int *value) {
 bool set_lval(State *state, Token lval, int rval) {
     switch (lval.type) {
         case TOK_REGISTER: {
-            if (!(lval.value[0] && lval.value[1] && !lval.value[2] && lval.value[0] == 'r')) {
-                printf("bass: invalid register: `%s`\n", lval.value);
-                return false;
-            }
-            int reg_num = lval.value[1] - 48;
-            if (reg_num < 0 || reg_num >= 8) {
-                printf("bass: invalid register: `%s`\n", lval.value);
-                return false;
-            }
-            state->registers[reg_num] = rval;
+            state->registers[lval.register_num] = rval;
             return true;
         } break;
         case TOK_ADDRESS: {
