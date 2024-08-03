@@ -253,6 +253,10 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
         } break;
 
         case OP_DIV: {
+            if (arg3_val == 0) {
+                printf("bass: attempt to divide by 0\n");
+                return false;
+            }
             if (!set_lval(state, arg1, arg2_val / arg3_val)) {
                 return false;
             }
