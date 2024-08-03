@@ -114,7 +114,7 @@ bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
                 line++;
             }
         } else {
-            printf("Error parsing token: `%s` at line: %zu, offset: %zu\n", token, line, op_start);
+            printf("Error parsing token: `%s` at line: %zu\n", token, line);
             return false;
         }
         token = strtok(NULL, delims);
@@ -174,20 +174,20 @@ bool eval_rval(State *state, Token token, int *value) {
             assert(false && "Unimplemented");
         break;
         case TOK_REGISTER: {
-            if (token.value[0] && token.value[1] && token.value[0] != 'r') {
-                printf("bass: invalid register\n");
+            if (!(token.value[0] && token.value[1] && !token.value[2] && token.value[0] == 'r')) {
+                printf("bass: invalid register: `%s`\n", token.value);
                 return false;
             }
             int reg_num = token.value[1] - 48;
             if (reg_num < 0 || reg_num >= 8) {
-                printf("bass: invalid register\n");
+                printf("bass: invalid register: `%s`\n", token.value);
                 return false;
             }
             *value = state->registers[reg_num];
             return true;
         } break;
         case TOK_OPCODE:
-            printf("bass: Opcodes cannot be rvalues!");
+            printf("bass: opcode: `%s` is not an rvalue!", token.value);
             return false;
         break;
     }
@@ -197,13 +197,13 @@ bool eval_rval(State *state, Token token, int *value) {
 bool set_lval(State *state, Token lval, int rval) {
     switch (lval.type) {
         case TOK_REGISTER: {
-            if (lval.value[0] && lval.value[1] && lval.value[0] != 'r') {
-                printf("bass: invalid register\n");
+            if (!(lval.value[0] && lval.value[1] && !lval.value[2] && lval.value[0] == 'r')) {
+                printf("bass: invalid register: `%s`\n", lval.value);
                 return false;
             }
             int reg_num = lval.value[1] - 48;
             if (reg_num < 0 || reg_num >= 8) {
-                printf("bass: invalid register\n");
+                printf("bass: invalid register: `%s`\n", lval.value);
                 return false;
             }
             state->registers[reg_num] = rval;
@@ -276,15 +276,15 @@ bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
 bool execute_opcode(State *state, Tokens tokens, OpCode op) {
     switch (op.end - op.start - 1) {
         case 3: {
-            Token arg1 = tokens.data[op.start + 1];
-            Token arg2 = tokens.data[op.start + 2];
-            Token arg3 = tokens.data[op.start + 3];
-            return eval_3(state, tokens.data[op.start].op, arg1, arg2, arg3);
+            return eval_3(state, tokens.data[op.start].op, 
+                          tokens.data[op.start + 1], 
+                          tokens.data[op.start + 2], 
+                          tokens.data[op.start + 3]);
         } break;
         case 2: {
-            Token arg1 = tokens.data[op.start + 1];
-            Token arg2 = tokens.data[op.start + 2];
-            return eval_2(state, tokens.data[op.start].op, arg1, arg2);
+            return eval_2(state, tokens.data[op.start].op, 
+                          tokens.data[op.start + 1], 
+                          tokens.data[op.start + 2]);
         } break;
         case 1: {
             Token arg1 = tokens.data[op.start + 1];
