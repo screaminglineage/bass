@@ -21,6 +21,7 @@ typedef enum {
     OP_DIV,
     OP_MOD,
     OP_MOVE,
+    OP_PRINT,
     OP_COUNT
 } Operation;
 
@@ -31,6 +32,7 @@ const char *OPERATIONS[OP_COUNT] = {
     [OP_DIV]    =   "div",
     [OP_MOD]    =   "mod",
     [OP_MOVE]   =   "move",
+    [OP_PRINT]  =   "print",
 };
 
 typedef enum {
@@ -270,25 +272,46 @@ bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
     return false;
 }
 
-void execute(State *state, Tokens tokens, OpCodes opcodes) {
+
+bool execute_opcode(State *state, Tokens tokens, OpCode op) {
+    switch (op.end - op.start - 1) {
+        case 3: {
+            Token arg1 = tokens.data[op.start + 1];
+            Token arg2 = tokens.data[op.start + 2];
+            Token arg3 = tokens.data[op.start + 3];
+            return eval_3(state, tokens.data[op.start].op, arg1, arg2, arg3);
+        } break;
+        case 2: {
+            Token arg1 = tokens.data[op.start + 1];
+            Token arg2 = tokens.data[op.start + 2];
+            return eval_2(state, tokens.data[op.start].op, arg1, arg2);
+        } break;
+        case 1: {
+            Token arg1 = tokens.data[op.start + 1];
+            int arg1_val;
+            if (!eval_rval(state, arg1, &arg1_val)) {
+                return false;
+            }
+            if (tokens.data[op.start].op == OP_PRINT) {
+                printf("%d", arg1_val);
+                return true;
+            }
+            return false;
+        } break;
+        default:
+            assert(false && "Unreachable!");
+    }
+}
+
+
+bool execute(State *state, Tokens tokens, OpCodes opcodes) {
     for (size_t i = 0; i < opcodes.size; i++) {
         OpCode op = opcodes.data[i];
-        switch (op.end - op.start - 1) {
-            case 3: {
-                Token arg1 = tokens.data[op.start + 1];
-                Token arg2 = tokens.data[op.start + 2];
-                Token arg3 = tokens.data[op.start + 3];
-                eval_3(state, tokens.data[op.start].op, arg1, arg2, arg3);
-            } break;
-            case 2: {
-                Token arg1 = tokens.data[op.start + 1];
-                Token arg2 = tokens.data[op.start + 2];
-                eval_2(state, tokens.data[op.start].op, arg1, arg2);
-            } break;
-            default:
-                assert(false && "Unimplemented!");
+        if (!execute_opcode(state, tokens, op)) {
+            return false;
         }
     }
+    return true;
 }
 
 
@@ -305,6 +328,5 @@ int main(int argc, char **argv) {
 
     State state = {0};
     execute(&state, tokens, opcodes);
-    printf("state.registers[0] = %d\n", state.registers[1]);
     return 0;
 }
