@@ -120,6 +120,7 @@ bool is_register(char *token, int *register_num) {
 }
 
 
+// TODO: fix how the line numbers are calculated
 bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     const char *delims = " \n";
     char *token = strtok(source, delims);
