@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #define REG_COUNT 8
+#define STACK_MAX 2048
 
 #define dyn_append(da, item)                                                      \
 do {                                                                         \
@@ -16,6 +17,9 @@ do {                                                                         \
     (da)->data[(da)->size++] = item;                                           \
 } while (0)
 
+#define MODULO(a, b) (((a) % (b)) + (b)) % (b);
+
+
 typedef enum {
     OP_NO,
     OP_ADD,
@@ -25,11 +29,14 @@ typedef enum {
     OP_MOD,
     OP_MOVE,
     OP_PRINT,
+    OP_PUSH,
+    OP_POP,
+
     OP_COUNT
 } Operation;
 
 const char *OPERATIONS[OP_COUNT] = {
-    [OP_NO]    =    "nop",
+    [OP_NO]     =   "nop",
     [OP_ADD]    =   "add",
     [OP_SUB]    =   "sub",
     [OP_MUL]    =   "mul",
@@ -37,6 +44,8 @@ const char *OPERATIONS[OP_COUNT] = {
     [OP_MOD]    =   "mod",
     [OP_MOVE]   =   "move",
     [OP_PRINT]  =   "print",
+    [OP_PUSH]   =   "push",
+    [OP_POP]    =   "pop"
 };
 
 typedef enum {
@@ -183,6 +192,8 @@ void opcodes_print(Tokens tokens, OpCodes opcodes) {
 
 typedef struct {
     int registers[REG_COUNT];
+    int reg_sp;
+    int stack[STACK_MAX];
 } State;
 
 bool eval_rval(State *state, Token token, int *value) {
@@ -305,6 +316,40 @@ bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
     }
 }
 
+bool eval_1(State *state, Operation op, Token arg) {
+    switch (op) {
+        case OP_PRINT: {
+            int arg_val;
+            if (!eval_rval(state, arg, &arg_val)) {
+                return false;
+            }
+            printf("%d", arg_val);
+            return true;
+        } break;
+        case OP_PUSH: {
+            int arg_val;
+            if (!eval_rval(state, arg, &arg_val)) {
+                return false;
+            }
+            state->stack[state->reg_sp] = arg_val;
+            state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
+            return true;
+        } break;
+        case OP_POP: {
+            state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
+            int value = state->stack[state->reg_sp];
+            if (!set_lval(state, arg, value)) {
+                return false;
+            }
+            return true;
+        } break;
+        default: {
+            printf("bass: opcode: `%s` does not take 2 arguments\n", OPERATIONS[op]);
+            return false;
+        }
+    }
+}
+
 
 bool execute_opcode(State *state, Tokens tokens, OpCode op) {
     switch (op.end - op.start - 1) {
@@ -320,16 +365,8 @@ bool execute_opcode(State *state, Tokens tokens, OpCode op) {
                           tokens.data[op.start + 2]);
         } break;
         case 1: {
-            Token arg1 = tokens.data[op.start + 1];
-            int arg1_val;
-            if (!eval_rval(state, arg1, &arg1_val)) {
-                return false;
-            }
-            if (tokens.data[op.start].op == OP_PRINT) {
-                printf("%d", arg1_val);
-                return true;
-            }
-            return false;
+            return eval_1(state, tokens.data[op.start].op, 
+                          tokens.data[op.start + 1]);
         } break;
 
         case 0: {
