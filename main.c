@@ -132,7 +132,7 @@ bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     int register_num;
 
     while (token != NULL) {
-        token[strcspn(token, "\n")] = 0;
+        token[strcspn(token, "\n")] = 0; // stripping newlines
         if (token[0] == '#') {
             dyn_append(tokens, ((Token){token + 1, TOK_VALUE, {0}}));
         } else if (token[0] == '@') {
