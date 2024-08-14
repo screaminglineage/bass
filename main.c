@@ -31,6 +31,7 @@ typedef enum {
     OP_PRINT,
     OP_PUSH,
     OP_POP,
+    OP_JUMP,
 
     OP_COUNT
 } Operation;
@@ -45,7 +46,8 @@ const char *OPERATIONS[OP_COUNT] = {
     [OP_MOVE]   =   "move",
     [OP_PRINT]  =   "print",
     [OP_PUSH]   =   "push",
-    [OP_POP]    =   "pop"
+    [OP_POP]    =   "pop",
+    [OP_JUMP]    =  "jump"
 };
 
 typedef enum {
@@ -59,8 +61,12 @@ typedef struct {
     char *value;
     TokenType type;
     union {
-        Operation op; // only valid if it is an opcode
-        int register_num;
+        Operation op;       // for regular opcodes
+        int register_num;   // for registers
+        struct {            // for jump opcodes
+            Operation op;
+            int jump_op;
+        } jump;
     };
 } Token;
 
@@ -80,6 +86,24 @@ typedef struct {
     size_t size;
     size_t capacity;
 } OpCodes;
+
+typedef struct {
+    char *name;
+    int op_count;
+} Label;
+
+typedef struct {
+    Label *data;
+    size_t size;
+    size_t capacity;
+} Labels;
+
+typedef struct {
+    int *data;
+    size_t size;
+    size_t capacity;
+} Jumps;
+
 
 char *read_to_string(const char *filepath) {
     FILE *file = fopen(filepath, "r");
@@ -119,17 +143,24 @@ bool is_register(char *token, int *register_num) {
     return true;
 }
 
+bool patch_opcodes(OpCodes *opcodes, Labels labels) {
+    assert(false && "Unimplemented");
+}
 
-// TODO: fix how the line numbers are calculated
+
 bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
     const char *delims = " \n";
     char *token = strtok(source, delims);
 
     size_t op_start = 0;
     size_t op_end = 0;
-    size_t line = 1;
+    size_t op_count = 0;
     Operation op;
     int register_num;
+
+    Labels labels = {0};
+    Jumps jumps = {0};
+    bool jump_flag = false;
 
     while (token != NULL) {
         token[strcspn(token, "\n")] = 0; // stripping newlines
@@ -143,21 +174,37 @@ bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
             }
             dyn_append(tokens, ((Token){token, TOK_REGISTER, {.register_num = register_num} }));
         } else if (is_opcode(token, &op)) {
-            dyn_append(tokens, ((Token){token, TOK_OPCODE, {.op = op} }));
+            if (op == OP_JUMP) {
+                jump_flag = true;
+                dyn_append(tokens, ((Token){token, TOK_OPCODE, .jump = {.op = op, .jump_op = -1 } }));
+                dyn_append(&jumps, op_count);
+            } else {
+                dyn_append(tokens, ((Token){token, TOK_OPCODE, {.op = op}}));
+            }
             if (op_start != op_end) {
                 dyn_append(opcodes, ((OpCode){op_start, op_end}));
                 op_start = op_end;
-                line++;
+                op_count++;
             }
+        } else if (jump_flag){
+            jump_flag = false;
         } else {
-            printf("Error parsing token: `%s` at line: %zu\n", token, line);
-            return false;
+            // parsing labels
+            size_t len = strlen(token);
+            if (token[len - 1] == ':') {
+                token[len - 1] = '\0';
+                dyn_append(&labels, ((Label){token, op_count}));
+            } else {
+                printf("Error parsing token: `%s` at opcode: %zu\n", token, op_count + 1);
+                return false;
+            }
         }
         token = strtok(NULL, delims);
         op_end++;
     }
     dyn_append(opcodes, ((OpCode){op_start, op_end}));
-    return true;
+
+    return patch_opcodes(opcodes, labels);
 }
 
 void tokens_print(Tokens tokens) {
