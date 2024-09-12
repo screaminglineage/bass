@@ -24,6 +24,14 @@ typedef struct {
     size_t length;
 } StringView;
 
+
+static inline char *string_view_to_cstring(StringView sv) {
+    char *str =  malloc(sizeof(char)*(sv.length + 1));
+    memcpy(str, sv.data, sv.length);
+    str[sv.length] = 0;
+    return str;
+}
+
 static inline bool read_to_string(const char *filepath, StringView *sv) {
     FILE *file = fopen(filepath, "r");
     if (!file) {

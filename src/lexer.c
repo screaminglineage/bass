@@ -116,7 +116,7 @@ bool lex_register(Lexer *lexer, Tokens *tokens) {
         next(lexer);
     }
     if (!(isspace(peek(lexer)) || peek(lexer) == '\0')) {
-        fprintf(stderr, "bass: unexpected character at: %zu\n", lexer->end);
+        fprintf(stderr, "bass: unexpected character `%c` at: %zu\n", peek(lexer), lexer->end);
         return false;
     }
     StringView string = get_string(lexer);
@@ -124,7 +124,7 @@ bool lex_register(Lexer *lexer, Tokens *tokens) {
         fprintf(stderr, "bass: invalid register at: %zu\n", lexer->start);
         return false;
     }
-    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 10);
+    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 0);
     if (num >= REG_COUNT) {
         fprintf(stderr, "bass: invalid register: `%ld` at %zu. Registers can range from 0 to %d\n", num, lexer->start, REG_COUNT);
         return false;
@@ -143,7 +143,7 @@ bool lex_value(Lexer *lexer, Tokens *tokens) {
         next(lexer);
     }
     if (!(isspace(peek(lexer)) || peek(lexer) == '\0')) {
-        fprintf(stderr, "bass: unexpected character at: %zu\n", lexer->end);
+        fprintf(stderr, "bass: unexpected character `%c` at: %zu\n", peek(lexer), lexer->end);
         return false;
     }
     StringView string = get_string(lexer);
@@ -151,7 +151,7 @@ bool lex_value(Lexer *lexer, Tokens *tokens) {
         fprintf(stderr, "bass: expected value after `#` at: %zu\n", lexer->start);
         return false;
     }
-    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 10);
+    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 0);
     Token token = {
         TOK_VALUE,
         string,
@@ -175,9 +175,9 @@ bool lex_address(Lexer *lexer, Tokens *tokens) {
         fprintf(stderr, "bass: expected value after `@` at: %zu\n", lexer->start);
         return false;
     }
-    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 10);
+    long num = strtol(&lexer->source.data[lexer->start + 1], NULL, 0);
     Token token = {
-        TOK_VALUE,
+        TOK_ADDRESS,
         string,
         .value = num
     };
@@ -192,9 +192,9 @@ StringView lex_identifier(Lexer *lexer) {
     return get_string(lexer);
 }
 
-bool get_opcode(StringView string, OpType *type) {
+bool get_opcode(char *string, OpType *type) {
     for (size_t i=0; i<OP_COUNT; i++) {
-        if (strncmp(string.data, OPCODES[i], string.length) == 0) {
+        if (strcmp(string, OPCODES[i]) == 0) {
             *type = i;
             return true;
         }
@@ -233,25 +233,28 @@ bool lex(Lexer *lexer, Tokens *tokens) {
                             string,
                             {0}
                         };
-                    } else if (isspace(peeked_char)) {
+                    } else if ((isspace(peeked_char) || peeked_char == '\0')) {
                         OpType opcode;
-                        if (!get_opcode(string, &opcode)) {
-                            fprintf(stderr, "bass: unexpected opcode at: %zu\n", lexer->start);
+                        char *str = string_view_to_cstring(string);
+                        if (!get_opcode(str, &opcode)) {
+                            fprintf(stderr, "bass: invalid opcode `%s` at: %zu\n", str, lexer->start);
+                            free(str);
                             return false;
                         }
+                        free(str);
                         token = (Token) {
                             TOK_OPCODE,
                             string,
                             .op = opcode
                         };
                     } else {
-                        fprintf(stderr, "bass: unexpected character at: %zu\n", lexer->end);
+                        fprintf(stderr, "bass: unexpected character `%c` at: %zu\n", peeked_char, lexer->end);
                         return false;
                     }
-                dyn_append(tokens, token);
-                next(lexer);
-                } else if (!isspace(current)) {
-                    fprintf(stderr, "bass: unexpected character at: %zu\n", lexer->end);
+                    dyn_append(tokens, token);
+                    next(lexer);
+                } else if (!(isspace(current) || current == '\0')) {
+                    fprintf(stderr, "bass: unexpected character `%c` at: %zu\n", current, lexer->end);
                     return false;
                 }
             }
@@ -261,6 +264,36 @@ bool lex(Lexer *lexer, Tokens *tokens) {
     return true;
 }
 
+void tokens_print(Tokens tokens) {
+    for (size_t i=0; i<tokens.size; i++) {
+        Token t = tokens.data[i];
+        switch (t.type) {
+            case TOK_LABEL: {
+                printf("LABEL: ");
+                string_view_print(t.string);
+                printf("\n");
+            } break;
+            case TOK_OPCODE: {
+                printf("OPCODE:");
+                string_view_print(t.string);
+                printf("\n");
+            } break;
+            case TOK_REGISTER:
+                printf("REGISTER: %d\n", t.reg_num);
+                break;
+
+            case TOK_VALUE:
+                printf("VALUE: %d\n", t.value);
+                break;
+            case TOK_ADDRESS:
+                printf("ADDRESS: %d\n", t.value);
+                break;
+        }
+
+    }
+}
+
+
 int main(int argc, char *argv[]) {
     StringView sv;
     read_to_string(argv[1], &sv);
@@ -268,5 +301,6 @@ int main(int argc, char *argv[]) {
     lexer_init(&l, sv);
     Tokens tokens = {0};
     lex(&l, &tokens)? printf("Successfully Lexed!\n"): printf("Failed to Lex!\n");
+    tokens_print(tokens);
     return 0;
 }
