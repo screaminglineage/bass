@@ -37,16 +37,18 @@ typedef struct {
     int arity; // no of arguments it takes
 } OpCodeData;
 
-OpCodeData OPCODES[OP_COUNT] = {[OP_NO] = {.name = "nop", .arity = 0},
-                                [OP_ADD] = {.name = "add", .arity = 3},
-                                [OP_SUB] = {.name = "sub", .arity = 3},
-                                [OP_MUL] = {.name = "mul", .arity = 3},
-                                [OP_DIV] = {.name = "div", .arity = 3},
-                                [OP_MOD] = {.name = "mod", .arity = 3},
-                                [OP_MOVE] = {.name = "move", .arity = 2},
-                                [OP_PRINT] = {.name = "print", .arity = 1},
-                                [OP_PUSH] = {.name = "push", .arity = 1},
-                                [OP_POP] = {.name = "pop", .arity = 1}};
+OpCodeData OPCODES[OP_COUNT] = {
+    [OP_NO] = {.name = "nop", .arity = 0},
+    [OP_ADD] = {.name = "add", .arity = 3},
+    [OP_SUB] = {.name = "sub", .arity = 3},
+    [OP_MUL] = {.name = "mul", .arity = 3},
+    [OP_DIV] = {.name = "div", .arity = 3},
+    [OP_MOD] = {.name = "mod", .arity = 3},
+    [OP_MOVE] = {.name = "move", .arity = 2},
+    [OP_PRINT] = {.name = "print", .arity = 1},
+    [OP_PUSH] = {.name = "push", .arity = 1},
+    [OP_POP] = {.name = "pop", .arity = 1}
+};
 
 typedef struct {
     TokenType type;
