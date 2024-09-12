@@ -4,21 +4,8 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#define REG_COUNT 8
-#define STACK_MAX 2048
-
-#define dyn_append(da, item)                                                      \
-do {                                                                         \
-    if ((da)->size == (da)->capacity) {                                        \
-        (da)->capacity = ((da)->capacity <= 0) ? 1 : (da)->capacity * 2;         \
-        (da)->data = realloc((da)->data, (da)->capacity * sizeof(*(da)->data));  \
-        assert((da)->data && "Catastrophic Failure: Allocation failed!");        \
-    }                                                                          \
-    (da)->data[(da)->size++] = item;                                           \
-} while (0)
-
-#define MODULO(a, b) (((a) % (b)) + (b)) % (b);
-
+#include "utils.h"
+#include "constants.h"
 
 typedef enum {
     OP_NO,
@@ -81,19 +68,6 @@ typedef struct {
     size_t capacity;
 } OpCodes;
 
-char *read_to_string(const char *filepath) {
-    FILE *file = fopen(filepath, "r");
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    rewind(file);
-
-    char *data = malloc(size + 1);
-    fread(data, size, 1, file);
-    fclose(file);
-
-    data[size] = 0;
-    return data;
-}
 
 bool is_opcode(const char *token, Operation *op) {
     for (size_t i=0; i<OP_COUNT; i++) {
@@ -176,7 +150,7 @@ void tokens_print(Tokens tokens) {
             case TOK_OPCODE:
                 printf(" - opcode\n");
                 break;
-            default: 
+            default:
                 assert(false && "Unhandled case!");
         }
     }
@@ -186,7 +160,7 @@ void tokens_print(Tokens tokens) {
 void opcodes_print(Tokens tokens, OpCodes opcodes) {
     for (size_t i=0; i<opcodes.size; i++) {
         Token token = tokens.data[opcodes.data[i].start];
-        printf("%s\n", OPERATIONS[token.op]); 
+        printf("%s\n", OPERATIONS[token.op]);
     }
     putchar('\n');
 }
@@ -355,18 +329,18 @@ bool eval_1(State *state, Operation op, Token arg) {
 bool execute_opcode(State *state, Tokens tokens, OpCode op) {
     switch (op.end - op.start - 1) {
         case 3: {
-            return eval_3(state, tokens.data[op.start].op, 
-                          tokens.data[op.start + 1], 
-                          tokens.data[op.start + 2], 
+            return eval_3(state, tokens.data[op.start].op,
+                          tokens.data[op.start + 1],
+                          tokens.data[op.start + 2],
                           tokens.data[op.start + 3]);
         } break;
         case 2: {
-            return eval_2(state, tokens.data[op.start].op, 
-                          tokens.data[op.start + 1], 
+            return eval_2(state, tokens.data[op.start].op,
+                          tokens.data[op.start + 1],
                           tokens.data[op.start + 2]);
         } break;
         case 1: {
-            return eval_1(state, tokens.data[op.start].op, 
+            return eval_1(state, tokens.data[op.start].op,
                           tokens.data[op.start + 1]);
         } break;
 
@@ -398,10 +372,14 @@ bool execute(State *state, Tokens tokens, OpCodes opcodes) {
 
 int main(int argc, char **argv) {
     (void)argc;
-    char *source = read_to_string(argv[1]);
+
+    StringView source;
+    if (!read_to_string(argv[1], &source)) {
+        return 1;
+    }
     Tokens tokens = {0};
     OpCodes opcodes = {0};
-    if (!parse_source(source, &tokens, &opcodes)) {
+    if (!parse_source(source.data, &tokens, &opcodes)) {
         return 1;
     }
     tokens_print(tokens);
