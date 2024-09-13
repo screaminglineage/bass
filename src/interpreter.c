@@ -31,9 +31,7 @@ bool set_lval(State *state, Operand lval, int rval) {
     } break;
     default: {
         char *str = string_view_to_cstring(lval.string);
-        fprintf(stderr,
-                "bass: lvalue: `%s`, is neither register nor memory"
-                "address ",
+        fprintf(stderr, "bass: expected register or memory address got: `%s`\n",
                 str);
         free(str);
         return false;
