@@ -11,11 +11,7 @@ typedef struct {
     size_t end;
 } Lexer;
 
-typedef enum {
-    TOK_REGISTER,
-    TOK_VALUE,
-    TOK_ADDRESS,
-} TokenType;
+typedef enum { TOK_REGISTER, TOK_VALUE, TOK_ADDRESS, TOK_LABEL } TokenType;
 
 typedef enum {
     OP_NO,
@@ -28,6 +24,7 @@ typedef enum {
     OP_PRINT,
     OP_PUSH,
     OP_POP,
+    OP_JUMP,
 
     OP_COUNT
 } OpType;
@@ -37,18 +34,17 @@ typedef struct {
     int arity; // no of arguments it takes
 } OpCodeData;
 
-OpCodeData OPCODES[OP_COUNT] = {
-    [OP_NO] = {.name = "nop", .arity = 0},
-    [OP_ADD] = {.name = "add", .arity = 3},
-    [OP_SUB] = {.name = "sub", .arity = 3},
-    [OP_MUL] = {.name = "mul", .arity = 3},
-    [OP_DIV] = {.name = "div", .arity = 3},
-    [OP_MOD] = {.name = "mod", .arity = 3},
-    [OP_MOVE] = {.name = "move", .arity = 2},
-    [OP_PRINT] = {.name = "print", .arity = 1},
-    [OP_PUSH] = {.name = "push", .arity = 1},
-    [OP_POP] = {.name = "pop", .arity = 1}
-};
+OpCodeData OPCODES[OP_COUNT] = {[OP_NO] = {.name = "nop", .arity = 0},
+                                [OP_ADD] = {.name = "add", .arity = 3},
+                                [OP_SUB] = {.name = "sub", .arity = 3},
+                                [OP_MUL] = {.name = "mul", .arity = 3},
+                                [OP_DIV] = {.name = "div", .arity = 3},
+                                [OP_MOD] = {.name = "mod", .arity = 3},
+                                [OP_MOVE] = {.name = "move", .arity = 2},
+                                [OP_PRINT] = {.name = "print", .arity = 1},
+                                [OP_PUSH] = {.name = "push", .arity = 1},
+                                [OP_POP] = {.name = "pop", .arity = 1},
+                                [OP_JUMP] = {.name = "jump", .arity = 1}};
 
 typedef struct {
     TokenType type;
@@ -111,27 +107,17 @@ char current(Lexer *lexer) {
     (StringView) {                                                             \
         &(lexer)->source.data[(lexer)->start], (lexer)->end - (lexer)->start   \
     }
+
 // #define get_slice(lexer, start, end)
 // (StringView){&(lexer)->source.data[(start)], (end) - (start)}
-
-// bool string_view_to_int(StringView string, int *result) {
-//     *result = 0;
-//     for (size_t i=0; i<string.length; i++) {
-//         if ('0' <= string.data[i] && string.data[i] <= '9') {
-//             *result = *result * 10 + (string.data[i] - '0');
-//         } else {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
 bool parse_num(Lexer *lexer, long *num, StringView *string) {
     while (isalnum(peek(lexer))) {
         next(lexer);
     }
     if (!(isspace(peek(lexer)) || peek(lexer) == '\0')) {
-        fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n", peek(lexer), lexer->end);
+        fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
+                peek(lexer), lexer->end);
         return false;
     }
     *string = get_string(lexer);
@@ -143,7 +129,7 @@ bool parse_num(Lexer *lexer, long *num, StringView *string) {
     return true;
 }
 
-StringView lex_identifier(Lexer *lexer) {
+StringView parse_identifier(Lexer *lexer) {
     while (isalnum(peek(lexer))) {
         next(lexer);
     }
@@ -161,53 +147,61 @@ bool get_opcode(char *string, OpType *type) {
 }
 
 bool parse_operands(Lexer *lexer, OpType type, Operand operands[MAX_OPERANDS]) {
-    char current;
     int i = 0;
-    while (i < OPCODES[type].arity && (current = next(lexer))) {
+    while (i < OPCODES[type].arity) {
+        char current = next(lexer);
         long num;
         StringView string;
         switch (current) {
-            case 'r': {
-                if (!parse_num(lexer, &num, &string)) {
-                    return false;
-                }
-                if (num >= REG_COUNT) {
-                    fprintf(
-                        stderr,
-                        "bass: invalid register: `%ld` at %zu. Registers can range "
-                        "from 0 to %d\n",
-                        num, lexer->start, REG_COUNT);
-                    return false;
-                }
-                operands[i++] = (Operand){TOK_REGISTER, string, num};
-            } break;
-            case '#': {
-                if (!parse_num(lexer, &num, &string)) {
-                    return false;
-                }
-                operands[i++] = (Operand){TOK_VALUE, string, num};
-            } break;
-            case '@': {
-                if (!parse_num(lexer, &num, &string)) {
-                    return false;
-                }
-                operands[i++] = (Operand){TOK_ADDRESS, string, num};
-            } break;
-            default: {
-                if (current == '\0') {
-                    fprintf(stderr, "bass: not enough operands for opcode `%s`\n",
-                        OPCODES[type].name);
-                    return false;
-                } else if (!isspace(current)) {
-                    fprintf(stderr, "bass: unexpected character `%c` at: %zu\n",
-                        current, lexer->end);
-                    return false;
-                }
+        case 'r': {
+            if (!parse_num(lexer, &num, &string)) {
+                return false;
             }
+            if (num >= REG_COUNT) {
+                fprintf(
+                    stderr,
+                    "bass: invalid register: `%ld` at %zu. Registers can range "
+                    "from 0 to %d\n",
+                    num, lexer->start, REG_COUNT);
+                return false;
+            }
+            operands[i++] = (Operand){TOK_REGISTER, string, num};
+        } break;
+        case '#': {
+            if (!parse_num(lexer, &num, &string)) {
+                return false;
+            }
+            operands[i++] = (Operand){TOK_VALUE, string, num};
+        } break;
+        case '@': {
+            if (!parse_num(lexer, &num, &string)) {
+                return false;
+            }
+            operands[i++] = (Operand){TOK_ADDRESS, string, num};
+        } break;
+        default: {
+            if (!isspace(current)) {
+                fprintf(stderr,
+                        "bass: not enough operands for opcode `%s`, expected "
+                        "%d but got %d\n",
+                        OPCODES[type].name, OPCODES[type].arity, i);
+                return false;
+            }
+        }
         }
         lexer->start = lexer->end;
     }
     return true;
+}
+
+bool parse_label(Lexer *lexer, Operand *operand) {
+    if (isalpha(next(lexer))) {
+        StringView string = parse_identifier(lexer);
+        lexer->start = lexer->end;
+        *operand = (Operand){TOK_LABEL, string, -1};
+        return true;
+    }
+    return false;
 }
 
 bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
@@ -215,7 +209,7 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
     size_t op_index = 0;
     while ((current = next(lexer))) {
         if (isalpha(current)) {
-            StringView string = lex_identifier(lexer);
+            StringView string = parse_identifier(lexer);
             lexer->start = lexer->end;
             char next_char = next(lexer);
             if (next_char == ':') {
@@ -233,8 +227,14 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
                 free(str);
                 lexer->start = lexer->end;
                 Operand operands[MAX_OPERANDS] = {0};
-                if (!parse_operands(lexer, op_type, operands)) {
-                    return false;
+                if (op_type == OP_JUMP) {
+                    if (!parse_label(lexer, &operands[0])) {
+                        return false;
+                    }
+                } else {
+                    if (!parse_operands(lexer, op_type, operands)) {
+                        return false;
+                    }
                 }
                 OpCode opcode;
                 opcode.op = op_type;
@@ -247,7 +247,8 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
                 return false;
             }
         } else if (!(isspace(current) || current == '\0')) {
-            fprintf(stderr, "bass: unexpected character `%c` at: %zu\n",
+            fprintf(stderr,
+                    "bass: expected opcode or label, got `%c` at: %zu\n",
                     current, lexer->end);
             return false;
         }
@@ -256,44 +257,51 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
     return true;
 }
 
-// void tokens_print(Operand tokens) {
-//     for (size_t i=0; i<tokens.size; i++) {
-//         Operand t = tokens.data[i];
-//         switch (t.type) {
-//             case TOK_LABEL: {
-//                 printf("LABEL: ");
-//                 string_view_print(t.string);
-//                 printf("\n");
-//             } break;
-//             case TOK_OPCODE: {
-//                 printf("OPCODE:");
-//                 string_view_print(t.string);
-//                 printf("\n");
-//             } break;
-//             case TOK_REGISTER:
-//                 printf("REGISTER: %d\n", t.reg_num);
-//                 break;
+void display_opcodes(OpCodes ops) {
+    for (size_t i = 0; i < ops.size; i++) {
+        OpCode t = ops.data[i];
+        printf("OpCode: %s\n", OPCODES[t.op].name);
+        for (int i = 0; i < OPCODES[t.op].arity; i++) {
+            int val = t.operands[i].value;
+            switch (t.operands[i].type) {
+            case TOK_REGISTER:
+                printf("\tREGISTER: %d\n", val);
+                break;
+            case TOK_VALUE:
+                printf("\tVALUE: %d\n", val);
+                break;
+            case TOK_ADDRESS:
+                printf("\tADDRESS: %d\n", val);
+                break;
+            case TOK_LABEL: {
+                char *str = string_view_to_cstring(t.operands[i].string);
+                printf("\tLABEL: %s (to opcode: %d)\n", str, val);
+                free(str);
+            } break;
+            }
+        }
+    }
+}
 
-//             case TOK_VALUE:
-//                 printf("VALUE: %d\n", t.value);
-//                 break;
-//             case TOK_ADDRESS:
-//                 printf("ADDRESS: %d\n", t.value);
-//                 break;
-//         }
-
-//     }
-// }
+void display_labels(Labels lbls) {
+    for (size_t i = 0; i < lbls.size; i++) {
+        Label t = lbls.data[i];
+        char *str = string_view_to_cstring(t.name);
+        printf("Label: %s\n", str);
+        free(str);
+    }
+}
 
 int main(int argc, char *argv[]) {
     StringView sv;
     read_to_string(argv[1], &sv);
     Lexer l;
     lexer_init(&l, sv);
-    OpCodes tokens = {0};
+    OpCodes opcodes = {0};
     Labels labels = {0};
-    lex(&l, &tokens, &labels) ? printf("Successfully Lexed!\n")
-                              : printf("Failed to Lex!\n");
-    // tokens_print(tokens);
+    lex(&l, &opcodes, &labels) ? printf("Successfully Lexed!\n")
+                               : printf("Failed to Lex!\n");
+    display_opcodes(opcodes);
+    display_labels(labels);
     return 0;
 }
