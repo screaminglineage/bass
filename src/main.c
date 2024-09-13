@@ -1,169 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "utils.h"
 #include "constants.h"
-
-typedef enum {
-    OP_NO,
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_MOD,
-    OP_MOVE,
-    OP_PRINT,
-    OP_PUSH,
-    OP_POP,
-
-    OP_COUNT
-} Operation;
-
-const char *OPERATIONS[OP_COUNT] = {
-    [OP_NO]     =   "nop",
-    [OP_ADD]    =   "add",
-    [OP_SUB]    =   "sub",
-    [OP_MUL]    =   "mul",
-    [OP_DIV]    =   "div",
-    [OP_MOD]    =   "mod",
-    [OP_MOVE]   =   "move",
-    [OP_PRINT]  =   "print",
-    [OP_PUSH]   =   "push",
-    [OP_POP]    =   "pop"
-};
-
-typedef enum {
-    TOK_OPCODE,
-    TOK_REGISTER,
-    TOK_VALUE,
-    TOK_ADDRESS,
-} TokenType;
-
-typedef struct {
-    char *value;
-    TokenType type;
-    union {
-        Operation op; // only valid if it is an opcode
-        int register_num;
-    };
-} Token;
-
-typedef struct {
-    Token *data;
-    size_t size;
-    size_t capacity;
-} Tokens;
-
-typedef struct {
-    size_t start;
-    size_t end; // points to the beginning of next opcode
-} OpCode;
-
-typedef struct {
-    OpCode *data;
-    size_t size;
-    size_t capacity;
-} OpCodes;
-
-
-bool is_opcode(const char *token, Operation *op) {
-    for (size_t i=0; i<OP_COUNT; i++) {
-        if (strcmp(token, OPERATIONS[i]) == 0) {
-            *op = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool is_register(char *token, int *register_num) {
-    if (!(token[0] && token[1] && !token[2] && token[0] == 'r')) {
-        printf("bass: invalid register: `%s`\n", token);
-        return false;
-    }
-    int num = token[1] - 48;
-    if (num < 0 || num >= REG_COUNT) {
-        printf("bass: invalid register: `%s`\n", token);
-        return false;
-    }
-    *register_num = num;
-    return true;
-}
-
-
-// TODO: fix how the line numbers are calculated
-bool parse_source(char *source, Tokens *tokens, OpCodes *opcodes) {
-    const char *delims = " \n";
-    char *token = strtok(source, delims);
-
-    size_t op_start = 0;
-    size_t op_end = 0;
-    size_t line = 1;
-    Operation op;
-    int register_num;
-
-    while (token != NULL) {
-        token[strcspn(token, "\n")] = 0; // stripping newlines
-        if (token[0] == '#') {
-            dyn_append(tokens, ((Token){token + 1, TOK_VALUE, {0}}));
-        } else if (token[0] == '@') {
-            dyn_append(tokens, ((Token){token + 1, TOK_ADDRESS, {0}}));
-        } else if (token[0] == 'r') {
-            if (!is_register(token, &register_num)) {
-                return false;
-            }
-            dyn_append(tokens, ((Token){token, TOK_REGISTER, {.register_num = register_num} }));
-        } else if (is_opcode(token, &op)) {
-            dyn_append(tokens, ((Token){token, TOK_OPCODE, {.op = op} }));
-            if (op_start != op_end) {
-                dyn_append(opcodes, ((OpCode){op_start, op_end}));
-                op_start = op_end;
-                line++;
-            }
-        } else {
-            printf("Error parsing token: `%s` at line: %zu\n", token, line);
-            return false;
-        }
-        token = strtok(NULL, delims);
-        op_end++;
-    }
-    dyn_append(opcodes, ((OpCode){op_start, op_end}));
-    return true;
-}
-
-void tokens_print(Tokens tokens) {
-    for (size_t i=0; i<tokens.size; i++) {
-        printf("%s", tokens.data[i].value);
-        switch (tokens.data[i].type) {
-            case TOK_VALUE:
-                printf(" - value\n");
-                break;
-            case TOK_ADDRESS:
-                printf(" - address\n");
-                break;
-            case TOK_REGISTER:
-                printf(" - register\n");
-                break;
-            case TOK_OPCODE:
-                printf(" - opcode\n");
-                break;
-            default:
-                assert(false && "Unhandled case!");
-        }
-    }
-    putchar('\n');
-}
-
-void opcodes_print(Tokens tokens, OpCodes opcodes) {
-    for (size_t i=0; i<opcodes.size; i++) {
-        Token token = tokens.data[opcodes.data[i].start];
-        printf("%s\n", OPERATIONS[token.op]);
-    }
-    putchar('\n');
-}
+#include "lexer.h"
+#include "utils.h"
 
 typedef struct {
     int registers[REG_COUNT];
@@ -171,27 +13,29 @@ typedef struct {
     int stack[STACK_MAX];
 } State;
 
+#if 0
+
 bool eval_rval(State *state, Token token, int *value) {
     switch (token.type) {
-        case TOK_VALUE: {
-            char *end;
-            *value = (int)strtol(token.value, &end, 0);
-            if (*end) {
-                printf("bass: incorrect integer literal");
-                return false;
-            }
-            return true;
-        } break;
-        case TOK_ADDRESS:
-            assert(false && "Unimplemented");
-        break;
-        case TOK_REGISTER: {
-            *value = state->registers[token.register_num];
-            return true;
-        } break;
-        case TOK_OPCODE:
-            printf("bass: opcode: `%s` is not an rvalue!", token.value);
+    case TOK_VALUE: {
+        char *end;
+        *value = (int)strtol(token.value, &end, 0);
+        if (*end) {
+            printf("bass: incorrect integer literal");
             return false;
+        }
+        return true;
+    } break;
+    case TOK_ADDRESS:
+        assert(false && "Unimplemented");
+        break;
+    case TOK_REGISTER: {
+        *value = state->registers[token.register_num];
+        return true;
+    } break;
+    case TOK_OPCODE:
+        printf("bass: opcode: `%s` is not an rvalue!", token.value);
+        return false;
         break;
     }
     return true;
@@ -199,18 +43,18 @@ bool eval_rval(State *state, Token token, int *value) {
 
 bool set_lval(State *state, Token lval, int rval) {
     switch (lval.type) {
-        case TOK_REGISTER: {
-            state->registers[lval.register_num] = rval;
-            return true;
-        } break;
-        case TOK_ADDRESS: {
-            assert(false && "Unimplemented");
-        } break;
-        default:
-            printf("bass: lvalue: `%s`, is neither register nor a memory address", lval.value);
-            return false;
+    case TOK_REGISTER: {
+        state->registers[lval.register_num] = rval;
+        return true;
+    } break;
+    case TOK_ADDRESS: {
+        assert(false && "Unimplemented");
+    } break;
+    default:
+        printf("bass: lvalue: `%s`, is neither register nor a memory address",
+               lval.value);
+        return false;
         break;
-
     }
 }
 
@@ -224,53 +68,54 @@ bool eval_3(State *state, Operation op, Token arg1, Token arg2, Token arg3) {
     }
 
     switch (op) {
-        case OP_ADD: {
-            if (!set_lval(state, arg1, arg2_val + arg3_val)) {
-                return false;
-            }
-            return true;
-        } break;
-
-        case OP_SUB: {
-            if (!set_lval(state, arg1, arg2_val - arg3_val)) {
-                return false;
-            }
-            return true;
-        } break;
-
-        case OP_MUL: {
-            if (!set_lval(state, arg1, arg2_val * arg3_val)) {
-                return false;
-            }
-            return true;
-        } break;
-
-        case OP_DIV: {
-            if (arg3_val == 0) {
-                printf("bass: attempt to divide by 0\n");
-                return false;
-            }
-            if (!set_lval(state, arg1, arg2_val / arg3_val)) {
-                return false;
-            }
-            return true;
-        } break;
-
-        case OP_MOD: {
-            if (arg3_val == 0) {
-                printf("bass: attempt to divide by 0\n");
-                return false;
-            }
-            if (!set_lval(state, arg1, arg2_val % arg3_val)) {
-                return false;
-            }
-            return true;
-        } break;
-
-        default: {
-            printf("bass: opcode: `%s` does not take 3 arguments\n", OPERATIONS[op]);
+    case OP_ADD: {
+        if (!set_lval(state, arg1, arg2_val + arg3_val)) {
             return false;
         }
+        return true;
+    } break;
+
+    case OP_SUB: {
+        if (!set_lval(state, arg1, arg2_val - arg3_val)) {
+            return false;
+        }
+        return true;
+    } break;
+
+    case OP_MUL: {
+        if (!set_lval(state, arg1, arg2_val * arg3_val)) {
+            return false;
+        }
+        return true;
+    } break;
+
+    case OP_DIV: {
+        if (arg3_val == 0) {
+            printf("bass: attempt to divide by 0\n");
+            return false;
+        }
+        if (!set_lval(state, arg1, arg2_val / arg3_val)) {
+            return false;
+        }
+        return true;
+    } break;
+
+    case OP_MOD: {
+        if (arg3_val == 0) {
+            printf("bass: attempt to divide by 0\n");
+            return false;
+        }
+        if (!set_lval(state, arg1, arg2_val % arg3_val)) {
+            return false;
+        }
+        return true;
+    } break;
+
+    default: {
+        printf("bass: opcode: `%s` does not take 3 arguments\n",
+               OPERATIONS[op]);
+        return false;
+    }
     }
 }
 
@@ -281,83 +126,82 @@ bool eval_2(State *state, Operation op, Token arg1, Token arg2) {
     }
 
     switch (op) {
-        case OP_MOVE: {
-            return set_lval(state, arg1, arg2_val);
-        } break;
-        default: {
-            printf("bass: opcode: `%s` does not take 2 arguments\n", OPERATIONS[op]);
-            return false;
-        }
+    case OP_MOVE: {
+        return set_lval(state, arg1, arg2_val);
+    } break;
+    default: {
+        printf("bass: opcode: `%s` does not take 2 arguments\n",
+               OPERATIONS[op]);
+        return false;
+    }
     }
 }
 
 bool eval_1(State *state, Operation op, Token arg) {
     switch (op) {
-        case OP_PRINT: {
-            int arg_val;
-            if (!eval_rval(state, arg, &arg_val)) {
-                return false;
-            }
-            printf("%d", arg_val);
-            return true;
-        } break;
-        case OP_PUSH: {
-            int arg_val;
-            if (!eval_rval(state, arg, &arg_val)) {
-                return false;
-            }
-            state->stack[state->reg_sp] = arg_val;
-            state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
-            return true;
-        } break;
-        case OP_POP: {
-            state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
-            int value = state->stack[state->reg_sp];
-            if (!set_lval(state, arg, value)) {
-                return false;
-            }
-            return true;
-        } break;
-        default: {
-            printf("bass: opcode: `%s` does not take 2 arguments\n", OPERATIONS[op]);
+    case OP_PRINT: {
+        int arg_val;
+        if (!eval_rval(state, arg, &arg_val)) {
             return false;
         }
+        printf("%d", arg_val);
+        return true;
+    } break;
+    case OP_PUSH: {
+        int arg_val;
+        if (!eval_rval(state, arg, &arg_val)) {
+            return false;
+        }
+        state->stack[state->reg_sp] = arg_val;
+        state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
+        return true;
+    } break;
+    case OP_POP: {
+        state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
+        int value = state->stack[state->reg_sp];
+        if (!set_lval(state, arg, value)) {
+            return false;
+        }
+        return true;
+    } break;
+    default: {
+        printf("bass: opcode: `%s` does not take 2 arguments\n",
+               OPERATIONS[op]);
+        return false;
+    }
     }
 }
-
 
 bool execute_opcode(State *state, Tokens tokens, OpCode op) {
     switch (op.end - op.start - 1) {
-        case 3: {
-            return eval_3(state, tokens.data[op.start].op,
-                          tokens.data[op.start + 1],
-                          tokens.data[op.start + 2],
-                          tokens.data[op.start + 3]);
-        } break;
-        case 2: {
-            return eval_2(state, tokens.data[op.start].op,
-                          tokens.data[op.start + 1],
-                          tokens.data[op.start + 2]);
-        } break;
-        case 1: {
-            return eval_1(state, tokens.data[op.start].op,
-                          tokens.data[op.start + 1]);
-        } break;
+    case 3: {
+        return eval_3(state, tokens.data[op.start].op,
+                      tokens.data[op.start + 1], tokens.data[op.start + 2],
+                      tokens.data[op.start + 3]);
+    } break;
+    case 2: {
+        return eval_2(state, tokens.data[op.start].op,
+                      tokens.data[op.start + 1], tokens.data[op.start + 2]);
+    } break;
+    case 1: {
+        return eval_1(state, tokens.data[op.start].op,
+                      tokens.data[op.start + 1]);
+    } break;
 
-        case 0: {
-            if (tokens.data[op.start].op == OP_NO) {
-                // nop does nothing
-                return true;
-            }
-            printf("bass: opcode: `%s` does not take 0 arguments\n", OPERATIONS[tokens.data[op.start].op]);
-            return false;
-        } break;
+    case 0: {
+        if (tokens.data[op.start].op == OP_NO) {
+            // nop does nothing
+            return true;
+        }
+        printf("bass: opcode: `%s` does not take 0 arguments\n",
+               OPERATIONS[tokens.data[op.start].op]);
+        return false;
+    } break;
 
-        default:
-            assert(false && "Unreachable!");
+    default:
+        assert(false && "Unreachable!");
     }
 }
-
 
 bool execute(State *state, Tokens tokens, OpCodes opcodes) {
     for (size_t i = 0; i < opcodes.size; i++) {
@@ -369,23 +213,40 @@ bool execute(State *state, Tokens tokens, OpCodes opcodes) {
     return true;
 }
 
+#endif
 
-int main(int argc, char **argv) {
+/* int main(int argc, char **argv) { */
+/*     (void)argc; */
+/**/
+/*     StringView source; */
+/*     if (!read_to_string(argv[1], &source)) { */
+/*         return 1; */
+/*     } */
+/*     Tokens tokens = {0}; */
+/*     OpCodes opcodes = {0}; */
+/*     if (!parse_source(source.data, &tokens, &opcodes)) { */
+/*         return 1; */
+/*     } */
+/*     tokens_print(tokens); */
+/*     opcodes_print(tokens, opcodes); */
+/**/
+/*     State state = {0}; */
+/*     execute(&state, tokens, opcodes); */
+/*     return 0; */
+/* } */
+
+int main(int argc, char *argv[]) {
     (void)argc;
 
-    StringView source;
-    if (!read_to_string(argv[1], &source)) {
-        return 1;
-    }
-    Tokens tokens = {0};
+    StringView sv;
+    read_to_string(argv[1], &sv);
+    Lexer l;
+    lexer_init(&l, sv);
     OpCodes opcodes = {0};
-    if (!parse_source(source.data, &tokens, &opcodes)) {
-        return 1;
-    }
-    tokens_print(tokens);
-    opcodes_print(tokens, opcodes);
-
-    State state = {0};
-    execute(&state, tokens, opcodes);
+    Labels labels = {0};
+    lex(&l, &opcodes, &labels) ? printf("Successfully Lexed!\n")
+                               : printf("Failed to Lex!\n");
+    display_opcodes(opcodes);
+    display_labels(labels);
     return 0;
 }

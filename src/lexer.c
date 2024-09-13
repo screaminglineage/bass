@@ -5,29 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct {
-    StringView source;
-    size_t start;
-    size_t end;
-} Lexer;
-
-typedef enum { TOK_REGISTER, TOK_VALUE, TOK_ADDRESS, TOK_LABEL } TokenType;
-
-typedef enum {
-    OP_NO,
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_MOD,
-    OP_MOVE,
-    OP_PRINT,
-    OP_PUSH,
-    OP_POP,
-    OP_JUMP,
-
-    OP_COUNT
-} OpType;
+#include "lexer.h"
 
 typedef struct {
     const char *name;
@@ -45,34 +23,6 @@ OpCodeData OPCODES[OP_COUNT] = {[OP_NO] = {.name = "nop", .arity = 0},
                                 [OP_PUSH] = {.name = "push", .arity = 1},
                                 [OP_POP] = {.name = "pop", .arity = 1},
                                 [OP_JUMP] = {.name = "jump", .arity = 1}};
-
-typedef struct {
-    TokenType type;
-    StringView string;
-    int value;
-} Operand;
-
-typedef struct {
-    OpType op;
-    Operand operands[MAX_OPERANDS];
-} OpCode;
-
-typedef struct {
-    OpCode *data;
-    size_t size;
-    size_t capacity;
-} OpCodes;
-
-typedef struct {
-    StringView name;
-    size_t index; // index of next opcode
-} Label;
-
-typedef struct {
-    Label *data;
-    size_t size;
-    size_t capacity;
-} Labels;
 
 void lexer_init(Lexer *lexer, StringView source_code) {
     lexer->source = source_code;
@@ -290,18 +240,4 @@ void display_labels(Labels lbls) {
         printf("Label: %s\n", str);
         free(str);
     }
-}
-
-int main(int argc, char *argv[]) {
-    StringView sv;
-    read_to_string(argv[1], &sv);
-    Lexer l;
-    lexer_init(&l, sv);
-    OpCodes opcodes = {0};
-    Labels labels = {0};
-    lex(&l, &opcodes, &labels) ? printf("Successfully Lexed!\n")
-                               : printf("Failed to Lex!\n");
-    display_opcodes(opcodes);
-    display_labels(labels);
-    return 0;
 }
