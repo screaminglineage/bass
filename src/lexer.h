@@ -29,6 +29,24 @@ typedef enum {
 } OpType;
 
 typedef struct {
+    const char *name;
+    int arity; // no of arguments it takes
+} OpCodeData;
+
+static const OpCodeData OPCODES[OP_COUNT] = {[OP_NO] = {.name = "nop", .arity = 0},
+                                [OP_ADD] = {.name = "add", .arity = 3},
+                                [OP_SUB] = {.name = "sub", .arity = 3},
+                                [OP_MUL] = {.name = "mul", .arity = 3},
+                                [OP_DIV] = {.name = "div", .arity = 3},
+                                [OP_MOD] = {.name = "mod", .arity = 3},
+                                [OP_MOVE] = {.name = "move", .arity = 2},
+                                [OP_PRINT] = {.name = "print", .arity = 1},
+                                [OP_PUSH] = {.name = "push", .arity = 1},
+                                [OP_POP] = {.name = "pop", .arity = 1},
+                                [OP_JUMP] = {.name = "jump", .arity = 1}};
+
+
+typedef struct {
     TokenType type;
     StringView string;
     int value;
@@ -58,6 +76,7 @@ typedef struct {
 
 void lexer_init(Lexer *lexer, StringView source_code);
 bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels);
+void patch_labels(OpCodes *opcodes, Labels labels);
 void display_opcodes(OpCodes ops);
 void display_labels(Labels ops);
 

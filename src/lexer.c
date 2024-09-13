@@ -1,28 +1,11 @@
-#include "constants.h"
 #include "utils.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "constants.h"
 #include "lexer.h"
-
-typedef struct {
-    const char *name;
-    int arity; // no of arguments it takes
-} OpCodeData;
-
-OpCodeData OPCODES[OP_COUNT] = {[OP_NO] = {.name = "nop", .arity = 0},
-                                [OP_ADD] = {.name = "add", .arity = 3},
-                                [OP_SUB] = {.name = "sub", .arity = 3},
-                                [OP_MUL] = {.name = "mul", .arity = 3},
-                                [OP_DIV] = {.name = "div", .arity = 3},
-                                [OP_MOD] = {.name = "mod", .arity = 3},
-                                [OP_MOVE] = {.name = "move", .arity = 2},
-                                [OP_PRINT] = {.name = "print", .arity = 1},
-                                [OP_PUSH] = {.name = "push", .arity = 1},
-                                [OP_POP] = {.name = "pop", .arity = 1},
-                                [OP_JUMP] = {.name = "jump", .arity = 1}};
 
 void lexer_init(Lexer *lexer, StringView source_code) {
     lexer->source = source_code;
@@ -191,6 +174,7 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
                 memcpy(&opcode.operands, operands,
                        sizeof(Operand) * MAX_OPERANDS);
                 dyn_append(opcodes, opcode);
+                op_index++;
             } else {
                 fprintf(stderr, "bass: unexpected character `%c` at: %zu\n",
                         next_char, lexer->end);
@@ -205,6 +189,21 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
         lexer->start = lexer->end;
     }
     return true;
+}
+
+void patch_labels(OpCodes *opcodes, Labels labels) {
+    for (size_t i = 0; i < opcodes->size; i++) {
+        OpCode opcode = opcodes->data[i];
+        if (opcode.op == OP_JUMP) {
+            StringView opcode_label = opcode.operands[0].string;
+            for (size_t j = 0; j < labels.size; j++) {
+                if (string_view_eq(opcode_label, labels.data[j].name)) {
+                    opcodes->data[i].operands[0].value = labels.data[j].index;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void display_opcodes(OpCodes ops) {
@@ -237,7 +236,7 @@ void display_labels(Labels lbls) {
     for (size_t i = 0; i < lbls.size; i++) {
         Label t = lbls.data[i];
         char *str = string_view_to_cstring(t.name);
-        printf("Label: %s\n", str);
+        printf("Label: %s (opcode: %zu)\n", str, t.index);
         free(str);
     }
 }

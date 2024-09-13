@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "constants.h"
 #include "lexer.h"
@@ -203,16 +202,6 @@ bool execute_opcode(State *state, Tokens tokens, OpCode op) {
     }
 }
 
-bool execute(State *state, Tokens tokens, OpCodes opcodes) {
-    for (size_t i = 0; i < opcodes.size; i++) {
-        OpCode op = opcodes.data[i];
-        if (!execute_opcode(state, tokens, op)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 #endif
 
 /* int main(int argc, char **argv) { */
@@ -246,6 +235,8 @@ int main(int argc, char *argv[]) {
     Labels labels = {0};
     lex(&l, &opcodes, &labels) ? printf("Successfully Lexed!\n")
                                : printf("Failed to Lex!\n");
+    patch_labels(&opcodes, labels);
+
     display_opcodes(opcodes);
     display_labels(labels);
     return 0;

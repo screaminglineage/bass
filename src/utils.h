@@ -32,6 +32,11 @@ static inline char *string_view_to_cstring(StringView sv) {
     return str;
 }
 
+static inline bool string_view_eq(StringView a, StringView b) {
+    if (a.length != b.length) return false;
+    return (strncmp(a.data, b.data, a.length) == 0);
+}
+
 static inline bool read_to_string(const char *filepath, StringView *sv) {
     FILE *file = fopen(filepath, "r");
     if (!file) {
