@@ -5,68 +5,69 @@
 #include <string.h>
 
 #include "constants.h"
-#include "lexer.h"
+#include "parser.h"
 
-void lexer_init(Lexer *lexer, StringView source_code) {
-    lexer->source = source_code;
-    lexer->start = 0;
-    lexer->end = 0;
+void parser_init(Parser *parser, StringView source_code) {
+    parser->source = source_code;
+    parser->start = 0;
+    parser->end = 0;
 }
 
-char next(Lexer *lexer) {
-    if (lexer->end < lexer->source.length) {
-        char next = lexer->source.data[lexer->end];
-        lexer->end++;
+char next(Parser *parser) {
+    if (parser->end < parser->source.length) {
+        char next = parser->source.data[parser->end];
+        parser->end++;
         return next;
     }
     return '\0';
 }
 
-char peek(Lexer *lexer) {
-    if (lexer->end < lexer->source.length) {
-        return lexer->source.data[lexer->end];
+char peek(Parser *parser) {
+    if (parser->end < parser->source.length) {
+        return parser->source.data[parser->end];
     }
     return '\0';
 }
 
-char current(Lexer *lexer) {
-    if (lexer->end > 0) {
-        return lexer->source.data[lexer->end - 1];
+char current(Parser *parser) {
+    if (parser->end > 0) {
+        return parser->source.data[parser->end - 1];
     }
     return '\0';
 }
 
-#define get_string(lexer)                                                      \
+#define get_string(parser)                                                     \
     (StringView) {                                                             \
-        &(lexer)->source.data[(lexer)->start], (lexer)->end - (lexer)->start   \
+        &(parser)->source.data[(parser)->start],                               \
+            (parser)->end - (parser)->start                                    \
     }
 
-// #define get_slice(lexer, start, end)
-// (StringView){&(lexer)->source.data[(start)], (end) - (start)}
+// #define get_slice(parser, start, end)
+// (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
-bool parse_num(Lexer *lexer, long *num, StringView *string) {
-    while (isalnum(peek(lexer))) {
-        next(lexer);
+bool parse_num(Parser *parser, long *num, StringView *string) {
+    while (isalnum(peek(parser))) {
+        next(parser);
     }
-    if (!(isspace(peek(lexer)) || peek(lexer) == '\0')) {
+    if (!(isspace(peek(parser)) || peek(parser) == '\0')) {
         fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
-                peek(lexer), lexer->end);
+                peek(parser), parser->end);
         return false;
     }
-    *string = get_string(lexer);
+    *string = get_string(parser);
     if (string->length <= 1) {
-        fprintf(stderr, "bass: expected value at: %zu\n", lexer->start);
+        fprintf(stderr, "bass: expected value at: %zu\n", parser->start);
         return false;
     }
-    *num = strtol(&lexer->source.data[lexer->start + 1], NULL, 0);
+    *num = strtol(&parser->source.data[parser->start + 1], NULL, 0);
     return true;
 }
 
-StringView parse_identifier(Lexer *lexer) {
-    while (isalnum(peek(lexer))) {
-        next(lexer);
+StringView parse_identifier(Parser *parser) {
+    while (isalnum(peek(parser))) {
+        next(parser);
     }
-    return get_string(lexer);
+    return get_string(parser);
 }
 
 bool get_opcode(char *string, OpType *type) {
@@ -79,15 +80,16 @@ bool get_opcode(char *string, OpType *type) {
     return false;
 }
 
-bool parse_operands(Lexer *lexer, OpType type, Operand operands[MAX_OPERANDS]) {
+bool parse_operands(Parser *parser, OpType type,
+                    Operand operands[MAX_OPERANDS]) {
     int i = 0;
     while (i < OPCODES[type].arity) {
-        char current = next(lexer);
+        char current = next(parser);
         long num;
         StringView string;
         switch (current) {
         case 'r': {
-            if (!parse_num(lexer, &num, &string)) {
+            if (!parse_num(parser, &num, &string)) {
                 return false;
             }
             if (num >= REG_COUNT) {
@@ -95,19 +97,19 @@ bool parse_operands(Lexer *lexer, OpType type, Operand operands[MAX_OPERANDS]) {
                     stderr,
                     "bass: invalid register: `%ld` at %zu. Registers can range "
                     "from 0 to %d\n",
-                    num, lexer->start, REG_COUNT);
+                    num, parser->start, REG_COUNT);
                 return false;
             }
             operands[i++] = (Operand){TOK_REGISTER, string, num};
         } break;
         case '#': {
-            if (!parse_num(lexer, &num, &string)) {
+            if (!parse_num(parser, &num, &string)) {
                 return false;
             }
             operands[i++] = (Operand){TOK_VALUE, string, num};
         } break;
         case '@': {
-            if (!parse_num(lexer, &num, &string)) {
+            if (!parse_num(parser, &num, &string)) {
                 return false;
             }
             operands[i++] = (Operand){TOK_ADDRESS, string, num};
@@ -122,29 +124,29 @@ bool parse_operands(Lexer *lexer, OpType type, Operand operands[MAX_OPERANDS]) {
             }
         }
         }
-        lexer->start = lexer->end;
+        parser->start = parser->end;
     }
     return true;
 }
 
-bool parse_label(Lexer *lexer, Operand *operand) {
-    if (isalpha(next(lexer))) {
-        StringView string = parse_identifier(lexer);
-        lexer->start = lexer->end;
+bool parse_label(Parser *parser, Operand *operand) {
+    if (isalpha(next(parser))) {
+        StringView string = parse_identifier(parser);
+        parser->start = parser->end;
         *operand = (Operand){TOK_LABEL, string, -1};
         return true;
     }
     return false;
 }
 
-bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
+bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     char current;
     size_t op_index = 0;
-    while ((current = next(lexer))) {
+    while ((current = next(parser))) {
         if (isalpha(current)) {
-            StringView string = parse_identifier(lexer);
-            lexer->start = lexer->end;
-            char next_char = next(lexer);
+            StringView string = parse_identifier(parser);
+            parser->start = parser->end;
+            char next_char = next(parser);
             if (next_char == ':') {
                 Label label = {string, op_index};
                 dyn_append(labels, label);
@@ -153,19 +155,19 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
                 char *str = string_view_to_cstring(string);
                 if (!get_opcode(str, &op_type)) {
                     fprintf(stderr, "bass: invalid opcode `%s` at: %zu\n", str,
-                            lexer->start);
+                            parser->start);
                     free(str);
                     return false;
                 }
                 free(str);
-                lexer->start = lexer->end;
+                parser->start = parser->end;
                 Operand operands[MAX_OPERANDS] = {0};
                 if (op_type == OP_JUMP) {
-                    if (!parse_label(lexer, &operands[0])) {
+                    if (!parse_label(parser, &operands[0])) {
                         return false;
                     }
                 } else {
-                    if (!parse_operands(lexer, op_type, operands)) {
+                    if (!parse_operands(parser, op_type, operands)) {
                         return false;
                     }
                 }
@@ -177,16 +179,16 @@ bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels) {
                 op_index++;
             } else {
                 fprintf(stderr, "bass: unexpected character `%c` at: %zu\n",
-                        next_char, lexer->end);
+                        next_char, parser->end);
                 return false;
             }
         } else if (!(isspace(current) || current == '\0')) {
             fprintf(stderr,
                     "bass: expected opcode or label, got `%c` at: %zu\n",
-                    current, lexer->end);
+                    current, parser->end);
             return false;
         }
-        lexer->start = lexer->end;
+        parser->start = parser->end;
     }
     return true;
 }

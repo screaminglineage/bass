@@ -1,5 +1,5 @@
-#ifndef BASS_LEXER_H
-#define BASS_LEXER_H
+#ifndef BASS_PARSER_H
+#define BASS_PARSER_H
 
 #include "utils.h"
 #include "constants.h"
@@ -8,7 +8,7 @@ typedef struct {
     StringView source;
     size_t start;
     size_t end;
-} Lexer;
+} Parser;
 
 typedef enum { TOK_REGISTER, TOK_VALUE, TOK_ADDRESS, TOK_LABEL } TokenType;
 
@@ -74,8 +74,8 @@ typedef struct {
     size_t capacity;
 } Labels;
 
-void lexer_init(Lexer *lexer, StringView source_code);
-bool lex(Lexer *lexer, OpCodes *opcodes, Labels *labels);
+void parser_init(Parser *parser, StringView source_code);
+bool parse(Parser *parser, OpCodes *opcodes, Labels *labels);
 void patch_labels(OpCodes *opcodes, Labels labels);
 void display_opcodes(OpCodes ops);
 void display_labels(Labels ops);

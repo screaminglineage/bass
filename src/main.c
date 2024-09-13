@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "constants.h"
-#include "lexer.h"
+#include "parser.h"
 #include "utils.h"
 
 typedef struct {
@@ -229,12 +229,12 @@ int main(int argc, char *argv[]) {
 
     StringView sv;
     read_to_string(argv[1], &sv);
-    Lexer l;
-    lexer_init(&l, sv);
+    Parser p;
+    parser_init(&p, sv);
     OpCodes opcodes = {0};
     Labels labels = {0};
-    lex(&l, &opcodes, &labels) ? printf("Successfully Lexed!\n")
-                               : printf("Failed to Lex!\n");
+    parse(&p, &opcodes, &labels) ? printf("Successfully parsed!\n")
+                                 : printf("Failed to parse!\n");
     patch_labels(&opcodes, labels);
 
     display_opcodes(opcodes);
