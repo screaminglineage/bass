@@ -274,7 +274,7 @@ void display_labels(Labels lbls) {
     for (size_t i = 0; i < lbls.size; i++) {
         Label t = lbls.data[i];
         char *str = string_view_to_cstring(t.name);
-        printf("Label: %s\n  ", str);
+        printf("Label: %s\n", str);
         free(str);
     }
 }
