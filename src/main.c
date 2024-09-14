@@ -35,8 +35,11 @@ int main(int argc, char *argv[]) {
     parser_init(&p, sv);
     OpCodes opcodes = {0};
     Labels labels = {0};
-    parse(&p, &opcodes, &labels) ? printf("Successfully parsed!\n")
-                                 : printf("Failed to parse!\n");
+    if (!parse(&p, &opcodes, &labels)){
+        printf("Failed to parse!\n");
+        return 1;
+    }
+    printf("Successfully parsed!\n");
     patch_labels(&opcodes, labels);
 
     display_opcodes(opcodes);
