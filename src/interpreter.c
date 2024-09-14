@@ -1,11 +1,11 @@
-#include <assert.h>
-#include <stdbool.h>
-#include <stdio.h>
-
-#include "constants.h"
 #include "interpreter.h"
+#include "constants.h"
 #include "parser.h"
 #include "utils.h"
+#include <assert.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 int eval_rval(State *state, Operand operand) {
     switch (operand.type) {
@@ -85,8 +85,20 @@ bool execute_opcode(State *state, OpCode opcode) {
             return false;
         }
     } break;
+    case OP_CMP: {
+        int first = eval_rval(state, opcode.operands[0]);
+        int second = eval_rval(state, opcode.operands[1]);
+        state->flag_cmp = (first < second) ? -1
+                        : (first > second) ? +1
+                        : 0;
+    } break;
     case OP_JUMP: {
         state->reg_pc = opcode.operands[0].value;
+    } break;
+    case OP_JUMPZ: {
+        if (state->flag_cmp == 0) {
+            state->reg_pc = opcode.operands[0].value;
+        }
     } break;
     case OP_PUSH: {
         int first = eval_rval(state, opcode.operands[0]);

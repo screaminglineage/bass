@@ -115,11 +115,18 @@ bool parse_operands(Parser *parser, OpType type,
             operands[i++] = (Operand){TOK_ADDRESS, string, num};
         } break;
         default: {
-            if (!isspace(current)) {
+            if (isalpha(current)) {
                 fprintf(stderr,
                         "bass: not enough operands for opcode `%s`, expected "
                         "%d but got %d\n",
                         OPCODES[type].name, OPCODES[type].arity, i);
+                return false;
+            } else if (!isspace(current)) {
+                fprintf(stderr,
+                        "bass: expected register, value or memory address but "
+                        "got `%c` "
+                        "at: %zu\n",
+                        current, parser->end);
                 return false;
             }
         }
@@ -162,7 +169,7 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                 free(str);
                 parser->start = parser->end;
                 Operand operands[MAX_OPERANDS] = {0};
-                if (op_type == OP_JUMP) {
+                if (op_type == OP_JUMP || op_type == OP_JUMPZ) {
                     if (!parse_label(parser, &operands[0])) {
                         return false;
                     }
@@ -196,7 +203,7 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
 void patch_labels(OpCodes *opcodes, Labels labels) {
     for (size_t i = 0; i < opcodes->size; i++) {
         OpCode opcode = opcodes->data[i];
-        if (opcode.op == OP_JUMP) {
+        if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ) {
             StringView opcode_label = opcode.operands[0].string;
             for (size_t j = 0; j < labels.size; j++) {
                 if (string_view_eq(opcode_label, labels.data[j].name)) {
