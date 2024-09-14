@@ -2,6 +2,10 @@
 
 A simple assembly-like language
 
+## Building and Running
+- Run `gcc src/*.c -O3 -o bass` in the root directory and use the executable generated as `./bass <filename>.bass`
+- Try running some examples such as `./bass examples/fact.bass`
+
 ## Sample program
 
 The following example performs some basic arithmetic operations and prints the result.
@@ -14,13 +18,13 @@ mul r3 r2 #9
 print r3
 ```
 
-A more complicated program that prints the Fibonacci series
+A more complicated program that prints the Fibonacci series.
 ```asm
 ; Prints first 10 numbers of the Fibonacci Series
-
 move r0 #0
 move r1 #0
 move r2 #1
+
 loop:
     add r0 r0 #1
     print r1
