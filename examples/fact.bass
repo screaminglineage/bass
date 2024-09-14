@@ -1,0 +1,11 @@
+move r0 #1
+move r1 #1
+
+loop:
+    add r0 r0 #1
+    mul r1 r0 r1
+    cmp r0 #7
+    jumpz end
+    jump loop
+end:
+    print r1
