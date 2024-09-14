@@ -1,4 +1,5 @@
 bass
 test.bass
 .cache/*
-compile_flags.txt # specifies c99 to clangd
+# specifies c99 to clangd
+compile_flags.txt
