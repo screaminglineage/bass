@@ -1,3 +1,4 @@
+; Prints first 10 numbers of the Fibonacci Series
 move r0 #0
 move r1 #0
 move r2 #1
