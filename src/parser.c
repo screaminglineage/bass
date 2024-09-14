@@ -1,6 +1,5 @@
 #include "utils.h"
 #include <ctype.h>
-#include <endian.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -192,7 +191,8 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             }
             // skip comments
         } else if (current == ';') {
-            while ((next(parser)) != '\n');
+            while ((next(parser)) != '\n')
+                ;
         } else if (!(isspace(current) || current == '\0')) {
             fprintf(stderr,
                     "bass: expected opcode or label, got `%c` at: %zu\n",
