@@ -46,6 +46,13 @@ char current(Parser *parser) {
 // (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
+    // allow negative integers
+    if (!(isalnum(peek(parser)) || peek(parser) == '-')) {
+        fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
+                peek(parser), parser->end);
+        return false;
+    }
+    next(parser);
     while (isalnum(peek(parser))) {
         next(parser);
     }

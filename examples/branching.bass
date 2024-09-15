@@ -2,12 +2,12 @@
 ; jumpg jumps only if the last cmp resulted in greater (first > second)
 ; jumpl is the opposite (first < second)
 
-cmp #99 #90
+cmp #98 #90
 jumpz eq
 jumpg gt
 jumpl lt
 
-eq: print #0 jump end
-gt: print #1 jump end
-lt: print #2 jump end
+eq: print #0    jump end
+gt: print #1    jump end
+lt: print #-1   jump end
 end:
