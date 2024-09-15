@@ -24,7 +24,11 @@ int main(int argc, char *argv[]) {
 
     display_opcodes(opcodes);
     display_labels(labels);
-    State state = {0};
+    State state;
+    if (!state_init(&state)) {
+        printf("bass: failed to allocated enough memory, exiting\n");
+        return 1;
+    }
     interpret(&state, opcodes);
     return 0;
 }

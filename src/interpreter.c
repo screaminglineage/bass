@@ -5,13 +5,14 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 int eval_rval(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_VALUE:
         return operand.value;
     case TOK_ADDRESS:
-        assert(false && "Unimplemented");
+        return *((int *)(state->memory + operand.value));
     case TOK_REGISTER:
         return state->registers[operand.value];
     default:
@@ -21,13 +22,12 @@ int eval_rval(State *state, Operand operand) {
 
 bool set_lval(State *state, Operand lval, int rval) {
     switch (lval.type) {
-    case TOK_REGISTER: {
+    case TOK_REGISTER:
         state->registers[lval.value] = rval;
         return true;
-    }
-    case TOK_ADDRESS: {
-        assert(false && "Unimplemented");
-    } break;
+    case TOK_ADDRESS:
+        *((int *)(state->memory + lval.value)) = rval;
+        return true;
     default: {
         char *str = string_view_to_cstring(lval.string);
         fprintf(stderr, "bass: expected register or memory address got: `%s`\n",
@@ -119,8 +119,16 @@ bool execute_opcode(State *state, OpCode opcode) {
     return true;
 }
 
+bool state_init(State *state) {
+    memset(state, 0, sizeof(*state));
+    state->memory = calloc(MEMORY_SIZE, sizeof(state->memory[0]));
+    if (!state->memory) {
+        return false;
+    }
+    return true;
+}
+
 bool interpret(State *state, OpCodes opcodes) {
-    state->reg_pc = 0;
     while (state->reg_pc < opcodes.size) {
         OpCode op = opcodes.data[state->reg_pc++];
         if (!execute_opcode(state, op)) {
