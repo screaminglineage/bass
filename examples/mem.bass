@@ -1,0 +1,8 @@
+; Utilizing memory addresses
+; Memory addresses are just an index into a 
+; preallocated pool much larger than the stack memory
+
+move @250 #12
+move r0 #12
+mul @250 @250 r0
+print @250
