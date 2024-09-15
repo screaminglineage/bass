@@ -169,7 +169,8 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                 free(str);
                 parser->start = parser->end;
                 Operand operands[MAX_OPERANDS] = {0};
-                if (op_type == OP_JUMP || op_type == OP_JUMPZ) {
+                if (op_type == OP_JUMP || op_type == OP_JUMPZ ||
+                    op_type == OP_JUMPG || op_type == OP_JUMPL) {
                     if (!parse_label(parser, &operands[0])) {
                         return false;
                     }
@@ -207,7 +208,8 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
 void patch_labels(OpCodes *opcodes, Labels labels) {
     for (size_t i = 0; i < opcodes->size; i++) {
         OpCode opcode = opcodes->data[i];
-        if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ) {
+        if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
+            opcode.op == OP_JUMPG || opcode.op == OP_JUMPL) {
             StringView opcode_label = opcode.operands[0].string;
             for (size_t j = 0; j < labels.size; j++) {
                 if (string_view_eq(opcode_label, labels.data[j].name)) {

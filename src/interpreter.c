@@ -97,6 +97,16 @@ bool execute_opcode(State *state, OpCode opcode) {
             state->reg_pc = opcode.operands[0].value;
         }
     } break;
+    case OP_JUMPG: {
+        if (state->flag_cmp == 1) {
+            state->reg_pc = opcode.operands[0].value;
+        }
+    } break;
+    case OP_JUMPL: {
+        if (state->flag_cmp == -1) {
+            state->reg_pc = opcode.operands[0].value;
+        }
+    } break;
     case OP_PUSH: {
         int first = eval_rval(state, opcode.operands[0]);
         state->stack[state->reg_sp] = first;
