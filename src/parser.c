@@ -76,6 +76,7 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
         fprintf(stderr, "bass: expected value at: %zu\n", parser->start);
         return false;
     }
+    // TODO: strtol: check for errors
     *num = strtol(&parser->source.data[parser->start + 1], NULL, 0);
     return true;
 }
@@ -117,7 +118,7 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
             if (!parse_num(parser, &num, &string)) {
                 return false;
             }
-            if (0 < num || num >= REG_COUNT) {
+            if (num < 0 || REG_COUNT <= num) {
                 fprintf(
                     stderr,
                     "bass: invalid register: `%ld` at %zu. Registers can range "
