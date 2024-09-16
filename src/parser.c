@@ -123,7 +123,7 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
                     stderr,
                     "bass: invalid register: `%ld` at %zu. Registers can range "
                     "from 0 to %d\n",
-                    num, parser->start, REG_COUNT);
+                    num, parser->start, REG_COUNT - 1);
                 return false;
             }
             operands[i++] = (Operand){TOK_REGISTER, string, num};
@@ -152,6 +152,13 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
                         "bass: expected register, value or memory address but "
                         "got `%c` after opcode: `%s` at: %zu\n",
                         current, OPCODES[op].name, parser->end);
+                if (isdigit(current)) {
+                    fprintf(
+                        stderr,
+                        "help: try prefixing `%c` with `r` for register, `#` "
+                        "for a literal value or `@` for a memory address\n",
+                        current);
+                }
                 return false;
             }
         }

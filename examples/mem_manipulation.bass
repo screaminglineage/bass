@@ -1,0 +1,23 @@
+; Writes `123` contiguously into memory Notice that the index is 
+; incremented/decremented by `4` each time to account for the size of an int (32 bit)
+
+write:
+    cmp r0 #40
+    jumpz print
+    
+    store r0 #123
+    add r0 r0 #4
+    jump write
+
+print:                  ; labels can have similar names to opcodes
+    cmp r0 #0
+    jumpz end
+    
+    sub r0 r0 #4
+    load r1 r0
+    print r1
+    print ' '
+    jump print
+end:
+
+

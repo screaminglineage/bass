@@ -142,7 +142,7 @@ bool execute_opcode(State *state, OpCode opcode) {
             printf("%c", operand.value);
             break;
         case TOK_LITERAL_STR:
-            printf("%.*s", SV_FORMAT(operand.string));
+            printf("%.*s\n", SV_FORMAT(operand.string));
             break;
         default:
             printf("%d", eval_int(state, opcode.operands[0]));
