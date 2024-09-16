@@ -31,7 +31,7 @@ static inline bool string_view_cstring_eq(StringView a, const char *b) {
         if (b[i] != a.data[i]) return false;
         i++;
     }
-    return (!b[i] && (i == a.length))? true: false;
+    return !b[i] && (i == a.length);
 }
 
 static inline char *string_view_to_cstring(StringView sv) {
