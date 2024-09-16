@@ -77,9 +77,9 @@ StringView parse_identifier(Parser *parser) {
     return get_string(parser);
 }
 
-bool get_opcode(char *string, OpType *type) {
+bool get_opcode(StringView string, OpType *type) {
     for (size_t i = 0; i < OP_COUNT; i++) {
-        if (strcmp(string, OPCODES[i].name) == 0) {
+        if (string_view_cstring_eq(string, OPCODES[i].name)) {
             *type = i;
             return true;
         }
@@ -166,14 +166,11 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                 dyn_append(labels, label);
             } else if ((isspace(next_char) || next_char == '\0')) {
                 OpType op_type;
-                char *str = string_view_to_cstring(string);
-                if (!get_opcode(str, &op_type)) {
-                    fprintf(stderr, "bass: invalid opcode `%s` at: %zu\n", str,
-                            parser->start);
-                    free(str);
+                if (!get_opcode(string, &op_type)) {
+                    fprintf(stderr, "bass: invalid opcode `%.*s` at: %zu\n",
+                            (int)string.length, string.data, parser->start);
                     return false;
                 }
-                free(str);
                 parser->start = parser->end;
                 Operand operands[MAX_OPERANDS] = {0};
                 if (op_type == OP_JUMP || op_type == OP_JUMPZ ||

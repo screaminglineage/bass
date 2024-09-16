@@ -24,6 +24,16 @@ typedef struct {
     size_t length;
 } StringView;
 
+
+static inline bool string_view_cstring_eq(StringView a, const char *b) {
+    size_t i = 0;
+    while (b[i] && i < a.length) {
+        if (b[i] != a.data[i]) return false;
+        i++;
+    }
+    return (!b[i] && (i == a.length))? true: false;
+}
+
 static inline char *string_view_to_cstring(StringView sv) {
     char *str =  malloc(sizeof(char)*(sv.length + 1));
     memcpy(str, sv.data, sv.length);
@@ -34,12 +44,6 @@ static inline char *string_view_to_cstring(StringView sv) {
 static inline bool string_view_eq(StringView a, StringView b) {
     if (a.length != b.length) return false;
     return (strncmp(a.data, b.data, a.length) == 0);
-}
-
-static inline void string_view_print(FILE *stream, StringView sv) {
-    for (size_t i=0; i<sv.length; i++) {
-        putc(sv.data[i], stream);
-    }
 }
 
 static inline bool read_to_string(const char *filepath, StringView *sv) {
