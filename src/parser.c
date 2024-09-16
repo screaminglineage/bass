@@ -13,7 +13,7 @@ void parser_init(Parser *parser, StringView source_code) {
     parser->end = 0;
 }
 
-char next(Parser *parser) {
+static inline char next(Parser *parser) {
     if (parser->end < parser->source.length) {
         char next = parser->source.data[parser->end];
         parser->end++;
@@ -22,18 +22,18 @@ char next(Parser *parser) {
     return '\0';
 }
 
-char peek(Parser *parser) {
+static inline char peek(Parser *parser) {
     if (parser->end < parser->source.length) {
         return parser->source.data[parser->end];
     }
     return '\0';
 }
 
-char current(Parser *parser) {
+static inline char *peek_ref(Parser *parser) {
     if (parser->end > 0) {
-        return parser->source.data[parser->end - 1];
+        return &parser->source.data[parser->end];
     }
-    return '\0';
+    return NULL;
 }
 
 #define get_string(parser)                                                     \
@@ -42,12 +42,22 @@ char current(Parser *parser) {
             (parser)->end - (parser)->start                                    \
     }
 
+bool get_opcode(StringView string, OpType *type) {
+    for (size_t i = 0; i < OP_COUNT; i++) {
+        if (string_view_cstring_eq(string, OPCODES[i].name)) {
+            *type = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // #define get_slice(parser, start, end)
 // (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
     // allow negative integers
-    if (!(isalnum(peek(parser)) || peek(parser) == '-')) {
+    if (!(isdigit(peek(parser)) || peek(parser) == '-')) {
         fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
                 peek(parser), parser->end);
         return false;
@@ -70,27 +80,35 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     return true;
 }
 
-StringView parse_identifier(Parser *parser) {
+// TODO: Reset the parser->start
+static inline StringView parse_identifier(Parser *parser) {
     while (isalnum(peek(parser))) {
         next(parser);
     }
     return get_string(parser);
 }
 
-bool get_opcode(StringView string, OpType *type) {
-    for (size_t i = 0; i < OP_COUNT; i++) {
-        if (string_view_cstring_eq(string, OPCODES[i].name)) {
-            *type = i;
-            return true;
-        }
+// parses character or string literals delimited by `quote`
+bool parse_quoted(Parser *parser, StringView *string, char quote,
+                  const char *type) {
+    parser->start = parser->end;
+    while (peek(parser) != quote && peek(parser) != '\0') {
+        next(parser);
     }
-    return false;
+    if (peek(parser) != quote) {
+        fprintf(stderr, "bass: unterminated %s literal at %zu\n", type,
+                parser->start);
+        return false;
+    }
+    *string = get_string(parser);
+    next(parser);
+    parser->start = parser->end;
+    return true;
 }
 
-bool parse_operands(Parser *parser, OpType type,
-                    Operand operands[MAX_OPERANDS]) {
+bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
     int i = 0;
-    while (i < OPCODES[type].arity) {
+    while (i < OPCODES[op].arity) {
         char current = next(parser);
         long num;
         StringView string;
@@ -99,7 +117,7 @@ bool parse_operands(Parser *parser, OpType type,
             if (!parse_num(parser, &num, &string)) {
                 return false;
             }
-            if (num >= REG_COUNT) {
+            if (0 < num || num >= REG_COUNT) {
                 fprintf(
                     stderr,
                     "bass: invalid register: `%ld` at %zu. Registers can range "
@@ -113,7 +131,7 @@ bool parse_operands(Parser *parser, OpType type,
             if (!parse_num(parser, &num, &string)) {
                 return false;
             }
-            operands[i++] = (Operand){TOK_VALUE, string, num};
+            operands[i++] = (Operand){TOK_LITERAL_NUM, string, num};
         } break;
         case '@': {
             if (!parse_num(parser, &num, &string)) {
@@ -126,14 +144,13 @@ bool parse_operands(Parser *parser, OpType type,
                 fprintf(stderr,
                         "bass: not enough operands for opcode `%s`, expected "
                         "%d but got %d\n",
-                        OPCODES[type].name, OPCODES[type].arity, i);
+                        OPCODES[op].name, OPCODES[op].arity, i);
                 return false;
             } else if (!isspace(current)) {
                 fprintf(stderr,
                         "bass: expected register, value or memory address but "
-                        "got `%c` "
-                        "at: %zu\n",
-                        current, parser->end);
+                        "got `%c` after opcode: `%s` at: %zu\n",
+                        current, OPCODES[op].name, parser->end);
                 return false;
             }
         }
@@ -153,6 +170,67 @@ bool parse_label(Parser *parser, Operand *operand) {
     return false;
 }
 
+bool parse_print(Parser *parser, Operand *operand) {
+    char current = peek(parser);
+    switch (current) {
+    // TODO: parse escape characters
+    case '\'': {
+        next(parser);
+        StringView string;
+        if (!parse_quoted(parser, &string, '\'', "character")) {
+            return false;
+        }
+        if (string.length > 1) {
+            fprintf(stderr,
+                    "bass: character literal: `%.*s` is too long at %zu\n",
+                    SV_FORMAT(string), parser->end);
+            return false;
+        }
+        *operand = (Operand){TOK_LITERAL_CHAR, string, string.data[0]};
+        return true;
+    }
+    case '\"': {
+        next(parser);
+        StringView string;
+        if (!parse_quoted(parser, &string, '\"', "string")) {
+            return false;
+        }
+        *operand = (Operand){TOK_LITERAL_STR, string, 0};
+        return true;
+    }
+    default:
+        return parse_operands(parser, OP_PRINT, operand);
+    }
+}
+
+bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
+    OpType op_type;
+    if (!get_opcode(string, &op_type)) {
+        fprintf(stderr, "bass: invalid opcode `%.*s` at: %zu\n",
+                (int)string.length, string.data, parser->start);
+        return false;
+    }
+    parser->start = parser->end;
+    Operand operands[MAX_OPERANDS] = {0};
+    if (op_type == OP_JUMP || op_type == OP_JUMPZ || op_type == OP_JUMPG ||
+        op_type == OP_JUMPL) {
+        if (!parse_label(parser, &operands[0])) {
+            return false;
+        }
+    } else if (op_type == OP_PRINT) {
+        if (!parse_print(parser, operands)) {
+            return false;
+        }
+    } else {
+        if (!parse_operands(parser, op_type, operands)) {
+            return false;
+        }
+    }
+    opcode->op = op_type;
+    memcpy(&opcode->operands, operands, sizeof(Operand) * MAX_OPERANDS);
+    return true;
+}
+
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     char current;
     size_t op_index = 0;
@@ -161,32 +239,17 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             StringView string = parse_identifier(parser);
             parser->start = parser->end;
             char next_char = next(parser);
+            // parse label
             if (next_char == ':') {
                 Label label = {string, op_index};
                 dyn_append(labels, label);
+
+                // parse opcode
             } else if ((isspace(next_char) || next_char == '\0')) {
-                OpType op_type;
-                if (!get_opcode(string, &op_type)) {
-                    fprintf(stderr, "bass: invalid opcode `%.*s` at: %zu\n",
-                            (int)string.length, string.data, parser->start);
+                OpCode opcode;
+                if (!parse_opcode(parser, string, &opcode)) {
                     return false;
                 }
-                parser->start = parser->end;
-                Operand operands[MAX_OPERANDS] = {0};
-                if (op_type == OP_JUMP || op_type == OP_JUMPZ ||
-                    op_type == OP_JUMPG || op_type == OP_JUMPL) {
-                    if (!parse_label(parser, &operands[0])) {
-                        return false;
-                    }
-                } else {
-                    if (!parse_operands(parser, op_type, operands)) {
-                        return false;
-                    }
-                }
-                OpCode opcode;
-                opcode.op = op_type;
-                memcpy(&opcode.operands, operands,
-                       sizeof(Operand) * MAX_OPERANDS);
                 dyn_append(opcodes, opcode);
                 op_index++;
             } else {
@@ -228,8 +291,7 @@ bool patch_labels(OpCodes *opcodes, Labels labels) {
             if (!found) {
                 fprintf(stderr,
                         "bass: couldnt find label: `%.*s` at opcode: `%s`\n",
-                        (int)opcode_label.length, opcode_label.data,
-                        OPCODES[opcode.op].name);
+                        SV_FORMAT(opcode_label), OPCODES[opcode.op].name);
                 return false;
             }
         }
@@ -239,24 +301,30 @@ bool patch_labels(OpCodes *opcodes, Labels labels) {
 
 void display_opcodes(OpCodes ops) {
     for (size_t i = 0; i < ops.size; i++) {
-        OpCode t = ops.data[i];
-        printf("OpCode: %s\n", OPCODES[t.op].name);
-        for (int i = 0; i < OPCODES[t.op].arity; i++) {
-            int val = t.operands[i].value;
-            switch (t.operands[i].type) {
+        OpCode op = ops.data[i];
+        printf("OpCode: %s\n", OPCODES[op.op].name);
+        for (int i = 0; i < OPCODES[op.op].arity; i++) {
+            int val = op.operands[i].value;
+            switch (op.operands[i].type) {
             case TOK_REGISTER:
                 printf("\tREGISTER: %d\n", val);
                 break;
-            case TOK_VALUE:
+            case TOK_LITERAL_NUM:
                 printf("\tVALUE: %d\n", val);
+                break;
+            case TOK_LITERAL_CHAR:
+                printf("\tVALUE: %c\n", val);
+                break;
+            case TOK_LITERAL_STR:
+                printf("\tVALUE: %.*s\n", SV_FORMAT(op.operands[0].string));
                 break;
             case TOK_ADDRESS:
                 printf("\tADDRESS: %d\n", val);
                 break;
             case TOK_LABEL: {
-                StringView str = t.operands[i].string;
-                printf("\tLABEL: %.*s (to opcode: %d)\n", (int)str.length,
-                       str.data, val);
+                StringView str = op.operands[i].string;
+                printf("\tLABEL: %.*s (to opcode: %d)\n", SV_FORMAT(str), val);
+
             } break;
             }
         }

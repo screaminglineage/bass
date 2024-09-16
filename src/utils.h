@@ -25,6 +25,11 @@ typedef struct {
 } StringView;
 
 
+// Use to print the StringView along with `%.*s` in the format string
+#define SV_FORMAT(sv) (int)(sv).length, (sv).data
+
+
+// Make sure that the C-String isnt NULL
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
     size_t i = 0;
     while (b[i] && i < a.length) {

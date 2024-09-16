@@ -7,16 +7,17 @@
 #include <stdio.h>
 #include <string.h>
 
-int eval_rval(State *state, Operand operand) {
+// evaluates values that are treated as integers
+int eval_int(State *state, Operand operand) {
     switch (operand.type) {
-    case TOK_VALUE:
+    case TOK_LITERAL_NUM:
         return operand.value;
     case TOK_ADDRESS:
-        return *((int *)(state->memory + operand.value));
+        return *(int *)(&state->memory[operand.value]);
     case TOK_REGISTER:
         return state->registers[operand.value];
     default:
-        assert(false && "Unreachable");
+        assert(false && "Passed in value was not an integer!");
     }
 }
 
@@ -26,7 +27,7 @@ bool set_lval(State *state, Operand lval, int rval) {
         state->registers[lval.value] = rval;
         return true;
     case TOK_ADDRESS:
-        *((int *)(state->memory + lval.value)) = rval;
+        *(int *)(&state->memory[lval.value]) = rval;
         return true;
     default: {
         fprintf(stderr,
@@ -39,7 +40,7 @@ bool set_lval(State *state, Operand lval, int rval) {
 }
 
 // TODO: wtf is this shit
-// needs this function to make compiler happy
+// need this function to make compiler happy
 static inline int unreachable() {
     assert(false && "Unreachable");
     return 0;
@@ -54,8 +55,8 @@ static inline int unreachable() {
                        : unreachable()
 
 bool calculate_and_set(State *state, OpCode opcode, OpType op) {
-    int first = eval_rval(state, opcode.operands[1]);
-    int second = eval_rval(state, opcode.operands[2]);
+    int first = eval_int(state, opcode.operands[1]);
+    int second = eval_int(state, opcode.operands[2]);
 
     if ((op == OP_DIV || op == OP_MOD) && second == 0) {
         fprintf(stderr, "bass: division by 0");
@@ -79,14 +80,14 @@ bool execute_opcode(State *state, OpCode opcode) {
         }
     } break;
     case OP_MOVE: {
-        int first = eval_rval(state, opcode.operands[1]);
+        int first = eval_int(state, opcode.operands[1]);
         if (!set_lval(state, opcode.operands[0], first)) {
             return false;
         }
     } break;
     case OP_CMP: {
-        int first = eval_rval(state, opcode.operands[0]);
-        int second = eval_rval(state, opcode.operands[1]);
+        int first = eval_int(state, opcode.operands[0]);
+        int second = eval_int(state, opcode.operands[1]);
         state->flag_cmp = (first < second) ? -1 : (first > second) ? +1 : 0;
     } break;
     case OP_JUMP: {
@@ -108,7 +109,7 @@ bool execute_opcode(State *state, OpCode opcode) {
         }
     } break;
     case OP_PUSH: {
-        int first = eval_rval(state, opcode.operands[0]);
+        int first = eval_int(state, opcode.operands[0]);
         state->stack[state->reg_sp] = first;
         state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
     } break;
@@ -120,7 +121,18 @@ bool execute_opcode(State *state, OpCode opcode) {
         }
     } break;
     case OP_PRINT: {
-        printf("%d", eval_rval(state, opcode.operands[0]));
+        Operand operand = opcode.operands[0];
+        switch (operand.type) {
+        case TOK_LITERAL_CHAR:
+            printf("%c", operand.value);
+            break;
+        case TOK_LITERAL_STR:
+            printf("%.*s", SV_FORMAT(operand.string));
+            break;
+        default:
+            printf("%d", eval_int(state, opcode.operands[0]));
+        }
+
     } break;
     case OP_NO:
     default:

@@ -10,13 +10,22 @@ typedef struct {
     size_t end;
 } Parser;
 
-typedef enum { TOK_REGISTER, TOK_VALUE, TOK_ADDRESS, TOK_LABEL } TokenType;
+typedef enum {
+    TOK_REGISTER,
+    TOK_LITERAL_NUM,
+    TOK_LITERAL_CHAR,
+    TOK_LITERAL_STR,
+    TOK_ADDRESS,
+    TOK_LABEL
+} TokenType;
 
 static const char *const TOKEN_STRING[TOK_LABEL + 1] = {
-    [TOK_REGISTER]  = "register",
-    [TOK_VALUE]     = "value",
-    [TOK_ADDRESS]   = "address",
-    [TOK_LABEL]     = "label",
+    [TOK_REGISTER]          = "register",
+    [TOK_LITERAL_NUM]       = "numeric literal",
+    [TOK_LITERAL_CHAR]      = "character literal",
+    [TOK_LITERAL_STR]    = "string literal",
+    [TOK_ADDRESS]           = "address",
+    [TOK_LABEL]             = "label",
 };
 
 typedef enum {
