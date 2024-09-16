@@ -212,8 +212,11 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     return true;
 }
 
-void patch_labels(OpCodes *opcodes, Labels labels) {
+// TODO: Multiple labels with the same name causes only the first one to be
+// valid. Maybe make `Labels` a hashmap or set instead
+bool patch_labels(OpCodes *opcodes, Labels labels) {
     for (size_t i = 0; i < opcodes->size; i++) {
+        bool found = false;
         OpCode opcode = opcodes->data[i];
         if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
             opcode.op == OP_JUMPG || opcode.op == OP_JUMPL) {
@@ -221,11 +224,20 @@ void patch_labels(OpCodes *opcodes, Labels labels) {
             for (size_t j = 0; j < labels.size; j++) {
                 if (string_view_eq(opcode_label, labels.data[j].name)) {
                     opcodes->data[i].operands[0].value = labels.data[j].index;
+                    found = true;
                     break;
                 }
             }
+            if (!found) {
+                fprintf(stderr,
+                        "bass: couldnt find label: `%.*s` at opcode: `%s`\n",
+                        (int)opcode_label.length, opcode_label.data,
+                        OPCODES[opcode.op].name);
+                return false;
+            }
         }
     }
+    return true;
 }
 
 void display_opcodes(OpCodes ops) {
@@ -245,9 +257,9 @@ void display_opcodes(OpCodes ops) {
                 printf("\tADDRESS: %d\n", val);
                 break;
             case TOK_LABEL: {
-                char *str = string_view_to_cstring(t.operands[i].string);
-                printf("\tLABEL: %s (to opcode: %d)\n", str, val);
-                free(str);
+                StringView str = t.operands[i].string;
+                printf("\tLABEL: %.*s (to opcode: %d)\n", (int)str.length,
+                       str.data, val);
             } break;
             }
         }
@@ -257,8 +269,7 @@ void display_opcodes(OpCodes ops) {
 void display_labels(Labels lbls) {
     for (size_t i = 0; i < lbls.size; i++) {
         Label t = lbls.data[i];
-        char *str = string_view_to_cstring(t.name);
-        printf("Label: %s (opcode: %zu)\n", str, t.index);
-        free(str);
+        printf("Label: %.*s (opcode: %zu)\n", (int)t.name.length, t.name.data,
+               t.index);
     }
 }

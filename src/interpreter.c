@@ -29,10 +29,10 @@ bool set_lval(State *state, Operand lval, int rval) {
         *((int *)(state->memory + lval.value)) = rval;
         return true;
     default: {
-        char *str = string_view_to_cstring(lval.string);
-        fprintf(stderr, "bass: expected register or memory address got: `%s`\n",
-                str);
-        free(str);
+        fprintf(stderr,
+                "bass: expected register or memory address, got %s: `%.*s`\n",
+                TOKEN_STRING[lval.type], (int)lval.string.length,
+                lval.string.data);
         return false;
     }
     }

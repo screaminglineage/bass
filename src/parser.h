@@ -12,6 +12,13 @@ typedef struct {
 
 typedef enum { TOK_REGISTER, TOK_VALUE, TOK_ADDRESS, TOK_LABEL } TokenType;
 
+static const char *const TOKEN_STRING[TOK_LABEL + 1] = {
+    [TOK_REGISTER]  = "register",
+    [TOK_VALUE]     = "value",
+    [TOK_ADDRESS]   = "address",
+    [TOK_LABEL]     = "label",
+};
+
 typedef enum {
     OP_NO,
     OP_ADD,
@@ -84,7 +91,7 @@ typedef struct {
 
 void parser_init(Parser *parser, StringView source_code);
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels);
-void patch_labels(OpCodes *opcodes, Labels labels);
+bool patch_labels(OpCodes *opcodes, Labels labels);
 void display_opcodes(OpCodes ops);
 void display_labels(Labels ops);
 

@@ -19,8 +19,11 @@ int main(int argc, char *argv[]) {
         printf("Failed to parse!\n");
         return 1;
     }
+    if (!patch_labels(&opcodes, labels)) {
+        printf("Failed to patch labels!\n");
+        return 1;
+    }
     printf("Successfully parsed!\n");
-    patch_labels(&opcodes, labels);
 
     display_opcodes(opcodes);
     display_labels(labels);
