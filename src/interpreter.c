@@ -17,6 +17,10 @@ int eval_int(State *state, Operand operand) {
     case TOK_REGISTER:
         return state->registers[operand.value];
     default:
+        /* fprintf(stderr, "bass: expected register or value, got %s: `%.*s`\n",
+         */
+        /*         TOKEN_STRING[lval.type], SV_FORMAT(lval.string)); */
+        /* return false; */
         assert(false && "Passed in value was not an integer!");
     }
 }
@@ -85,6 +89,17 @@ bool execute_opcode(State *state, OpCode opcode) {
             return false;
         }
     } break;
+    case OP_LOAD: {
+        int index = eval_int(state, opcode.operands[1]);
+        int first = *(int *)(&state->memory[index]);
+        if (!set_lval(state, opcode.operands[0], first)) {
+            return false;
+        }
+    } break;
+    case OP_STORE: {
+        int index = eval_int(state, opcode.operands[0]);
+        *(int *)(&state->memory[index]) = opcode.operands[1].value;
+    } break;
     case OP_CMP: {
         int first = eval_int(state, opcode.operands[0]);
         int second = eval_int(state, opcode.operands[1]);
@@ -132,11 +147,11 @@ bool execute_opcode(State *state, OpCode opcode) {
         default:
             printf("%d", eval_int(state, opcode.operands[0]));
         }
-
     } break;
     case OP_NO:
-    default:
         break;
+    default:
+        assert(false && "Unreachable");
     }
     return true;
 }
