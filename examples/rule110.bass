@@ -88,7 +88,7 @@ end:
     move r4 #0              ; Ensure r4 is 0
 
 print:
-    cmp r4 #r10             ; Modify if array size is changed (also see in rule110)
+    cmp r4 #10             ; Modify if array size is changed (also see in rule110)
     jumpz next
 
     load r3 r0
@@ -129,4 +129,6 @@ next:
     add r6 r6 #1
     jump main
 
-over:
+over: 
+    print ""
+

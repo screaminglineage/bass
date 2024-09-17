@@ -215,7 +215,7 @@ bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
     OpType op_type;
     if (!get_opcode(string, &op_type)) {
         fprintf(stderr, "bass: invalid opcode `%.*s` at: %zu\n",
-                (int)string.length, string.data, parser->start);
+                SV_FORMAT(string), parser->start);
         return false;
     }
     parser->start = parser->end;
@@ -342,7 +342,6 @@ void display_opcodes(OpCodes ops) {
 void display_labels(Labels lbls) {
     for (size_t i = 0; i < lbls.size; i++) {
         Label t = lbls.data[i];
-        printf("Label: %.*s (opcode: %zu)\n", (int)t.name.length, t.name.data,
-               t.index);
+        printf("Label: %.*s (opcode: %zu)\n", SV_FORMAT(t.name), t.index);
     }
 }

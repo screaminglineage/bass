@@ -36,8 +36,7 @@ bool set_lval(State *state, Operand lval, int rval) {
     default: {
         fprintf(stderr,
                 "bass: expected register or memory address, got %s: `%.*s`\n",
-                TOKEN_STRING[lval.type], (int)lval.string.length,
-                lval.string.data);
+                TOKEN_STRING[lval.type], SV_FORMAT(lval.string));
         return false;
     }
     }
