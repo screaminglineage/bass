@@ -121,7 +121,7 @@ main:
     cmp r6 #50              ; Modify this comparison to increase the no. of iterations
     jumpz over
 loopmain:
-    print ""
+    print '\n'
     push r0
     push r7
     jump rule110
@@ -130,5 +130,5 @@ next:
     jump main
 
 over: 
-    print ""
+    print '\n'
 

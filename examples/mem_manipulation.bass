@@ -19,5 +19,6 @@ print:                  ; labels can have similar names to opcodes
     print ' '
     jump print
 end:
+    print '\n'
 
 

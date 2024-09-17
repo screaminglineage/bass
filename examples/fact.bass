@@ -11,3 +11,4 @@ loop:
     jump loop
 end:
     print r1
+    print '\n'
