@@ -6,3 +6,4 @@ add r2 r0 r1
 mul r3 r2 #9
 print r3
 print '\n'
+
