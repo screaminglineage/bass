@@ -20,7 +20,7 @@ do {                                                                         \
 #define MODULO(a, b) (((a) % (b)) + (b)) % (b);
 
 typedef struct {
-    char *data;
+    const char *data;
     size_t length;
 } StringView;
 

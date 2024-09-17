@@ -29,7 +29,7 @@ static inline char peek(Parser *parser) {
     return '\0';
 }
 
-static inline char *peek_ref(Parser *parser) {
+static inline const char *peek_ref(Parser *parser) {
     if (parser->end > 0) {
         return &parser->source.data[parser->end];
     }
