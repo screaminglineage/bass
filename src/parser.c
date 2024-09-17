@@ -90,8 +90,8 @@ static inline StringView parse_identifier(Parser *parser) {
 }
 
 // parses character or string literals delimited by `quote`
-bool parse_quoted(Parser *parser, StringView *string, char quote,
-                  const char *type) {
+bool parse_quoted_char(Parser *parser, StringView *string, char quote,
+                       const char *type) {
     parser->start = parser->end;
     while (peek(parser) != quote && peek(parser) != '\0') {
         next(parser);
@@ -185,9 +185,22 @@ bool parse_print(Parser *parser, Operand *operand) {
     case '\'': {
         next(parser);
         StringView string;
-        if (!parse_quoted(parser, &string, '\'', "character")) {
+        if (!parse_quoted_char(parser, &string, '\'', "character")) {
             return false;
         }
+        if (string.length == 0) {
+            fprintf(stderr, "bass: empty character literal at %zu\n",
+                    parser->end);
+            return false;
+        }
+
+        // newline escape character
+        if (string.data[0] == '\\' && string.length == 2 &&
+            string.data[1] == 'n') {
+            *operand = (Operand){TOK_LITERAL_CHAR, string, '\n'};
+            return true;
+        }
+
         if (string.length > 1) {
             fprintf(stderr,
                     "bass: character literal: `%.*s` is too long at %zu\n",
@@ -200,7 +213,7 @@ bool parse_print(Parser *parser, Operand *operand) {
     case '\"': {
         next(parser);
         StringView string;
-        if (!parse_quoted(parser, &string, '\"', "string")) {
+        if (!parse_quoted_char(parser, &string, '\"', "string")) {
             return false;
         }
         *operand = (Operand){TOK_LITERAL_STR, string, 0};
