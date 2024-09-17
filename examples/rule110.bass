@@ -1,0 +1,132 @@
+; Example of Rule 110 cellular automata (which is turing complete)
+; https://en.wikipedia.org/wiki/rule%20110
+
+; This example uses the memory as a 1D array and indexes into it at 2 places
+; One for the current gen and another for the next gen
+; At the end of an iteration the indices are swapped using stack push and pop operations
+; The edges are padded by 0's (memory is initially set to all 0's automatically)
+
+move @4 #1
+move @8 #1
+move @12 #0
+move @16 #0
+move @20 #1
+move @24 #1
+move @28 #1
+move @32 #0
+move @36 #0
+move @40 #1
+
+jump start
+
+; Modifies r0, r1, r2, r3, r5, r7
+rule110:
+    move r5 #0
+loop110:
+    cmp r5 #10          ; Modify if array size is changed (also see in print)
+    jumpz end
+
+    sub r1 r0 #4
+    add r2 r0 #4
+
+    load r1 r1
+    load r3 r0
+    load r2 r2
+
+    cmp r1 #1
+    jumpz r1xx
+    jump r0xx
+
+continue:
+    add r0 r0 #4
+    add r5 r5 #1
+    jump loop110
+
+r0xx:
+    cmp r3 #1
+    jumpz set1
+    jump r00x
+
+r00x:
+    cmp r2 #1
+    jumpz set1
+    jump set0
+
+r1xx:
+    cmp r3 #1
+    jumpz r11x
+    jump r10x
+
+r10x:
+    cmp r2 #1
+    jumpz set1
+    jump set0
+
+r11x:
+    cmp r2 #1
+    jumpz set0
+    jump set1
+
+set1:
+    store r7 #1
+    add r7 r7 #4
+    jump continue
+
+set0:
+    store r7 #0
+    add r7 r7 #4
+    jump continue
+
+
+; Resetting r0 and r7 and also saving them
+; Modifies r0, r1, r7, r4, r3
+end: 
+    pop r0
+    pop r1
+    push r0
+    push r1
+    move r4 #0              ; Ensure r4 is 0
+
+print:
+    cmp r4 #r10             ; Modify if array size is changed (also see in rule110)
+    jumpz next
+
+    load r3 r0
+    cmp r3 #0
+    jumpz print0
+    jump print1
+
+back:
+    add r0 r0 #4
+    add r4 r4 #1
+    jump print
+
+print0:
+    print ' '
+    jump back
+
+print1:
+    print '#'
+    jump back
+
+; Set starting points for both arrays
+start:
+    move r0 #4
+    move r7 #48
+    jump loopmain
+    
+main:
+    pop r7
+    pop r0
+    cmp r6 #50              ; Modify this comparison to increase the no. of iterations
+    jumpz over
+loopmain:
+    print ""
+    push r0
+    push r7
+    jump rule110
+next:
+    add r6 r6 #1
+    jump main
+
+over:
