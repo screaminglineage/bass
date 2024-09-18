@@ -5,16 +5,14 @@
 move @250 #12
 move r0 #12
 mul @250 @250 r0
-print @250
-print '\n'
+println @250
 
 ; The @r syntax can be used to access the memory address
 ; using the value stored in the register (indirect addressing)
 
 move r0 #5
 sub @r0 #30 #1
-print @r0
-print '\n'
+println @r0
 
 ; It can be used together with load/store to achieve another
 ; layer of indirection
@@ -23,6 +21,5 @@ move r5 #32
 move @r5 #45
 store @r5 #1000         ; equivalent to `move @45 #1000`
 load r0 @r5
-print r0
-print '\n'
+println r0
 

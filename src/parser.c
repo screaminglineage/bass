@@ -59,11 +59,14 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     int skip = parser->end - parser->start;
 
     // allow negative integers
-    if (!(isdigit(peek(parser)) || peek(parser) == '-')) {
+    if (peek(parser) == '-') {
+        next(parser);
+    } else if (!isdigit(peek(parser))) {
         fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
                 peek(parser), parser->end);
         return false;
     }
+
     while (isalnum(peek(parser))) {
         next(parser);
     }
