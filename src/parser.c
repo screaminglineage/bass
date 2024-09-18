@@ -265,7 +265,7 @@ bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
         if (!parse_label(parser, &operands[0])) {
             return false;
         }
-    } else if (op_type == OP_PRINT) {
+    } else if (op_type == OP_PRINT || op_type == OP_PRINTLN) {
         if (!parse_print(parser, operands)) {
             return false;
         }

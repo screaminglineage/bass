@@ -8,7 +8,7 @@
 #include <string.h>
 
 // evaluates values that are treated as integers
-int eval_int(State *state, Operand operand) {
+static inline int eval_int(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_LITERAL_NUM:
         return operand.value;
@@ -23,7 +23,7 @@ int eval_int(State *state, Operand operand) {
     }
 }
 
-bool set_lval(State *state, Operand lval, int rval) {
+static inline bool set_lval(State *state, Operand lval, int rval) {
     switch (lval.type) {
     case TOK_REGISTER:
         state->registers[lval.value] = rval;
@@ -70,6 +70,19 @@ bool calculate_and_set(State *state, OpCode opcode, OpType op) {
         return false;
     }
     return true;
+}
+
+static inline void execute_print(State *state, Operand operand) {
+    switch (operand.type) {
+    case TOK_LITERAL_CHAR:
+        printf("%c", operand.value);
+        break;
+    case TOK_LITERAL_STR:
+        printf("%.*s", SV_FORMAT(operand.string));
+        break;
+    default:
+        printf("%d", eval_int(state, operand));
+    }
 }
 
 bool execute_opcode(State *state, OpCode opcode) {
@@ -136,17 +149,11 @@ bool execute_opcode(State *state, OpCode opcode) {
         }
     } break;
     case OP_PRINT: {
-        Operand operand = opcode.operands[0];
-        switch (operand.type) {
-        case TOK_LITERAL_CHAR:
-            printf("%c", operand.value);
-            break;
-        case TOK_LITERAL_STR:
-            printf("%.*s\n", SV_FORMAT(operand.string));
-            break;
-        default:
-            printf("%d", eval_int(state, opcode.operands[0]));
-        }
+        execute_print(state, opcode.operands[0]);
+    } break;
+    case OP_PRINTLN: {
+        execute_print(state, opcode.operands[0]);
+        putchar('\n');
     } break;
     case OP_NO:
         break;
