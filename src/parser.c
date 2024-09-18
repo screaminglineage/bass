@@ -88,7 +88,7 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
 
 // TODO: Reset the parser->start
 static inline StringView parse_identifier(Parser *parser) {
-    while (isalnum(peek(parser))) {
+    while (isalnum(peek(parser)) || peek(parser) == '_') {
         next(parser);
     }
     return get_string(parser);
