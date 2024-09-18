@@ -10,6 +10,5 @@ loop:
     jumpz end
     jump loop
 end:
-    print r1
-    print '\n'
+    println r1
 

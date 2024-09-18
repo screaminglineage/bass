@@ -7,9 +7,8 @@ jumpz eq
 jumpg gt
 jumpl lt
 
-eq: print #0    jump end
-gt: print #1    jump end
-lt: print #-1   jump end
+eq: println #0    jump end
+gt: println #1    jump end
+lt: println #-1   jump end
 end:
-    print '\n'
 
