@@ -7,3 +7,12 @@ move r0 #12
 mul @250 @250 r0
 print @250
 print '\n'
+
+; The @r syntax can be used to access the memory address
+; using the value stored in the register
+
+move r0 #5
+sub @r0 @250 #1
+print @r0
+print '\n'
+

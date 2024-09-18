@@ -29,11 +29,7 @@ loop110:
     sub r1 r0 #4
     add r2 r0 #4
 
-    load r1 r1
-    load r3 r0
-    load r2 r2
-
-    cmp r1 #1
+    cmp @r1 #1
     jumpz r1xx
     jump r0xx
 
@@ -43,37 +39,37 @@ continue:
     jump loop110
 
 r0xx:
-    cmp r3 #1
+    cmp @r0 #1
     jumpz set1
     jump r00x
 
 r00x:
-    cmp r2 #1
+    cmp @r2 #1
     jumpz set1
     jump set0
 
 r1xx:
-    cmp r3 #1
+    cmp @r0 #1
     jumpz r11x
     jump r10x
 
 r10x:
-    cmp r2 #1
+    cmp @r2 #1
     jumpz set1
     jump set0
 
 r11x:
-    cmp r2 #1
+    cmp @r2 #1
     jumpz set0
     jump set1
 
 set1:
-    store r7 #1
+    move @r7 #1
     add r7 r7 #4
     jump continue
 
 set0:
-    store r7 #0
+    move @r7 #0
     add r7 r7 #4
     jump continue
 
@@ -91,8 +87,7 @@ print:
     cmp r4 #10             ; Modify if array size is changed (also see in rule110)
     jumpz next
 
-    load r3 r0
-    cmp r3 #0
+    cmp @r0 #0
     jumpz print0
     jump print1
 

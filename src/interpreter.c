@@ -12,15 +12,13 @@ int eval_int(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_LITERAL_NUM:
         return operand.value;
-    case TOK_ADDRESS:
-        return *(int *)(&state->memory[operand.value]);
     case TOK_REGISTER:
         return state->registers[operand.value];
+    case TOK_ADDRESS:
+        return *(int *)(&state->memory[operand.value]);
+    case TOK_ADDRESS_REG:
+        return *(int *)(&state->memory[state->registers[operand.value]]);
     default:
-        /* fprintf(stderr, "bass: expected register or value, got %s: `%.*s`\n",
-         */
-        /*         TOKEN_STRING[lval.type], SV_FORMAT(lval.string)); */
-        /* return false; */
         assert(false && "Passed in value was not an integer!");
     }
 }
@@ -32,6 +30,9 @@ bool set_lval(State *state, Operand lval, int rval) {
         return true;
     case TOK_ADDRESS:
         *(int *)(&state->memory[lval.value]) = rval;
+        return true;
+    case TOK_ADDRESS_REG:
+        *(int *)(&state->memory[state->registers[lval.value]]) = rval;
         return true;
     default: {
         fprintf(stderr,

@@ -56,13 +56,14 @@ bool get_opcode(StringView string, OpType *type) {
 // (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
+    int skip = parser->end - parser->start;
+
     // allow negative integers
     if (!(isdigit(peek(parser)) || peek(parser) == '-')) {
         fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
                 peek(parser), parser->end);
         return false;
     }
-    next(parser);
     while (isalnum(peek(parser))) {
         next(parser);
     }
@@ -76,8 +77,9 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
         fprintf(stderr, "bass: expected value at: %zu\n", parser->start);
         return false;
     }
+
     // TODO: strtol: check for errors
-    *num = strtol(&parser->source.data[parser->start + 1], NULL, 0);
+    *num = strtol(&parser->source.data[parser->start + skip], NULL, 0);
     return true;
 }
 
@@ -107,6 +109,22 @@ bool parse_quoted_char(Parser *parser, StringView *string, char quote,
     return true;
 }
 
+bool parse_register(Parser *parser, long *num, StringView *string) {
+    if (!parse_num(parser, num, string)) {
+        return false;
+    }
+    if (*num < 0 || REG_COUNT <= *num) {
+        fprintf(stderr,
+                "bass: invalid register: `%ld` at %zu. Registers can range "
+                "from 0 to %d\n",
+                *num, parser->start, REG_COUNT - 1);
+        return false;
+    }
+    return true;
+}
+
+// TODO: the function assignes a value of long to an int (num is long, Operand
+// has int member variable)
 bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
     int i = 0;
     while (i < OPCODES[op].arity) {
@@ -115,15 +133,7 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
         StringView string;
         switch (current) {
         case 'r': {
-            if (!parse_num(parser, &num, &string)) {
-                return false;
-            }
-            if (num < 0 || REG_COUNT <= num) {
-                fprintf(
-                    stderr,
-                    "bass: invalid register: `%ld` at %zu. Registers can range "
-                    "from 0 to %d\n",
-                    num, parser->start, REG_COUNT - 1);
+            if (!parse_register(parser, &num, &string)) {
                 return false;
             }
             operands[i++] = (Operand){TOK_REGISTER, string, num};
@@ -135,10 +145,27 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
             operands[i++] = (Operand){TOK_LITERAL_NUM, string, num};
         } break;
         case '@': {
-            if (!parse_num(parser, &num, &string)) {
+            // parsing as memory address
+            if (isdigit(peek(parser))) {
+                if (!parse_num(parser, &num, &string)) {
+                    return false;
+                }
+                operands[i++] = (Operand){TOK_ADDRESS, string, num};
+
+                // parsing as address at register
+            } else if (peek(parser) == 'r') {
+                next(parser);
+                if (!parse_register(parser, &num, &string)) {
+                    return false;
+                }
+                operands[i++] = (Operand){TOK_ADDRESS_REG, string, num};
+            } else {
+                fprintf(
+                    stderr,
+                    "bass: expected register or value after `@` got: `%c`\n",
+                    peek(parser));
                 return false;
             }
-            operands[i++] = (Operand){TOK_ADDRESS, string, num};
         } break;
         default: {
             if (isalpha(current)) {
@@ -341,6 +368,9 @@ void display_opcodes(OpCodes ops) {
                 break;
             case TOK_ADDRESS:
                 printf("\tADDRESS: %d\n", val);
+                break;
+            case TOK_ADDRESS_REG:
+                printf("\tADDRESS AT REGISTER: %d\n", val);
                 break;
             case TOK_LABEL: {
                 StringView str = op.operands[i].string;
