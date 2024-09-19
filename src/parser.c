@@ -55,22 +55,25 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     if (peek(parser) == '-') {
         next(parser);
     } else if (!isdigit(peek(parser))) {
-        fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
-                peek(parser), parser->end);
+        fprintf(stderr, "bass: unexpected character: `%c` at: %d:%zu\n",
+                peek(parser), parser->line, get_col(parser));
         return false;
     }
 
     while (isalnum(peek(parser))) {
         next(parser);
     }
+
     if (!(isspace(peek(parser)) || peek(parser) == '\0')) {
-        fprintf(stderr, "bass: unexpected character: `%c` at: %zu\n",
-                peek(parser), parser->end);
+        fprintf(stderr, "bass: unexpected character `%c` at: %d:%zu\n",
+                peek(parser), parser->line, get_col(parser));
         return false;
     }
+
     *string = get_string(parser);
     if (string->length <= 1) {
-        fprintf(stderr, "bass: expected value at: %zu\n", parser->start);
+        fprintf(stderr, "bass: expected number at: %d:%zu\n", parser->line,
+                parser->start);
         return false;
     }
 
@@ -95,8 +98,8 @@ bool parse_quoted_char(Parser *parser, StringView *string, char quote,
         next(parser);
     }
     if (peek(parser) != quote) {
-        fprintf(stderr, "bass: unterminated %s literal at %zu\n", type,
-                parser->start);
+        fprintf(stderr, "bass: unterminated %s literal at: %d:%zu\n", type,
+                parser->line, parser->start);
         return false;
     }
     *string = get_string(parser);
@@ -111,9 +114,9 @@ bool parse_register(Parser *parser, long *num, StringView *string) {
     }
     if (*num < 0 || REG_COUNT <= *num) {
         fprintf(stderr,
-                "bass: invalid register: `%ld` at %zu. Registers can range "
-                "from 0 to %d\n",
-                *num, parser->start, REG_COUNT - 1);
+                "bass: invalid register `%ld` at: %d:%zu\n"
+                "help: registers can range from 0 to %d\n",
+                *num, parser->line, get_col(parser), REG_COUNT - 1);
         return false;
     }
     return true;
@@ -156,31 +159,54 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
                 }
                 operands[i++] = (Operand){TOK_ADDRESS_REG, string, num};
             } else {
-                fprintf(
-                    stderr,
-                    "bass: expected register or value after `@` got: `%c`\n",
-                    peek(parser));
+                if (peek(parser) == '\n') {
+                    fprintf(
+                        stderr,
+                        "bass: expected register or value after `@` got `\\n` "
+                        "at: %d:%zu\n",
+                        parser->line, get_col(parser) + 2);
+
+                } else {
+                    fprintf(
+                        stderr,
+                        "bass: expected register or value after `@` got `%c` "
+                        "at: %d:%zu\n",
+                        peek(parser), parser->line, get_col(parser) + 2);
+                }
                 return false;
             }
         } break;
+        case '\n': {
+            parser->line_start = parser->end;
+            parser->line++;
+        } break;
+
         default: {
-            if (isalpha(current)) {
-                fprintf(stderr,
-                        "bass: not enough operands for opcode `%s`, expected "
-                        "%d but got %d\n",
-                        OPCODES[op].name, OPCODES[op].arity, i);
-                return false;
-            } else if (!isspace(current)) {
-                fprintf(stderr,
+            if (!isspace(current)) {
+                if (current == '\0') {
+                    fprintf(
+                        stderr,
                         "bass: expected register, value or memory address but "
-                        "got `%c` after opcode: `%s` at: %zu\n",
-                        current, OPCODES[op].name, parser->end);
+                        "got EOF after at: %d:%zu\n",
+                        parser->line, get_col(parser) - 1);
+                } else {
+                    fprintf(
+                        stderr,
+                        "bass: expected register, value or memory address but "
+                        "got `%c` at: %d:%zu\n",
+                        current, parser->line, get_col(parser));
+                }
                 if (isdigit(current)) {
                     fprintf(
                         stderr,
                         "help: try prefixing `%c` with `r` for register, `#` "
                         "for a literal value or `@` for a memory address\n",
                         current);
+                } else {
+                    fprintf(stderr,
+                            "help: opcode `%s` takes %d arguments but got "
+                            "%d instead\n",
+                            OPCODES[op].name, OPCODES[op].arity, i);
                 }
                 return false;
             }
