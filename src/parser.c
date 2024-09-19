@@ -11,6 +11,8 @@ void parser_init(Parser *parser, StringView source_code) {
     parser->source = source_code;
     parser->start = 0;
     parser->end = 0;
+    parser->line_start = 0;
+    parser->line = 1;
 }
 
 static inline char next(Parser *parser) {
@@ -36,12 +38,6 @@ static inline const char *peek_ref(Parser *parser) {
     return NULL;
 }
 
-#define get_string(parser)                                                     \
-    (StringView) {                                                             \
-        &(parser)->source.data[(parser)->start],                               \
-            (parser)->end - (parser)->start                                    \
-    }
-
 bool get_opcode(StringView string, OpType *type) {
     for (size_t i = 0; i < OP_COUNT; i++) {
         if (string_view_cstring_eq(string, OPCODES[i].name)) {
@@ -51,9 +47,6 @@ bool get_opcode(StringView string, OpType *type) {
     }
     return false;
 }
-
-// #define get_slice(parser, start, end)
-// (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
     int skip = parser->end - parser->start;
@@ -198,7 +191,7 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
     return true;
 }
 
-bool parse_label(Parser *parser, Operand *operand) {
+bool parse_jump(Parser *parser, Operand *operand) {
     if (isalpha(next(parser))) {
         StringView string = parse_identifier(parser);
         parser->start = parser->end;
@@ -257,15 +250,16 @@ bool parse_print(Parser *parser, Operand *operand) {
 bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
     OpType op_type;
     if (!get_opcode(string, &op_type)) {
-        fprintf(stderr, "bass: invalid opcode `%.*s` at: %zu\n",
-                SV_FORMAT(string), parser->start);
+        fprintf(stderr, "bass: invalid opcode `%.*s` at: %d:%zu\n",
+                SV_FORMAT(string), parser->line,
+                parser->start - parser->line_start + 1);
         return false;
     }
     parser->start = parser->end;
     Operand operands[MAX_OPERANDS] = {0};
     if (op_type == OP_JUMP || op_type == OP_JUMPZ || op_type == OP_JUMPG ||
         op_type == OP_JUMPL) {
-        if (!parse_label(parser, &operands[0])) {
+        if (!parse_jump(parser, &operands[0])) {
             return false;
         }
     } else if (op_type == OP_PRINT || op_type == OP_PRINTLN) {
@@ -288,7 +282,6 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     while ((current = next(parser))) {
         if (isalpha(current)) {
             StringView string = parse_identifier(parser);
-            parser->start = parser->end;
             char next_char = next(parser);
             // parse label
             if (next_char == ':') {
@@ -304,18 +297,21 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                 dyn_append(opcodes, opcode);
                 op_index++;
             } else {
-                fprintf(stderr, "bass: unexpected character `%c` at: %zu\n",
-                        next_char, parser->end);
+                fprintf(stderr, "bass: unexpected character `%c` at: %d:%zu\n",
+                        next_char, parser->line, get_col(parser));
                 return false;
             }
             // skip comments
         } else if (current == ';') {
             while ((next(parser)) != '\n')
                 ;
+        } else if (current == '\n') {
+            parser->line_start = parser->end;
+            parser->line++;
         } else if (!(isspace(current) || current == '\0')) {
             fprintf(stderr,
-                    "bass: expected opcode or label, got `%c` at: %zu\n",
-                    current, parser->end);
+                    "bass: expected opcode or label, got `%c` at: %d:%zu\n",
+                    current, parser->line, get_col(parser));
             return false;
         }
         parser->start = parser->end;

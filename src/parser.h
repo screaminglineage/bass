@@ -8,6 +8,8 @@ typedef struct {
     StringView source;
     size_t start;
     size_t end;
+    size_t line_start;
+    int line;
 } Parser;
 
 typedef enum {
@@ -105,6 +107,17 @@ typedef struct {
     size_t size;
     size_t capacity;
 } Labels;
+
+#define get_string(parser)                                                     \
+    (StringView) {                                                             \
+        &(parser)->source.data[(parser)->start],                               \
+            (parser)->end - (parser)->start                                    \
+    }
+
+// #define get_slice(parser, start, end)
+// (StringView){&(parser)->source.data[(start)], (end) - (start)}
+
+#define get_col(parser) ((parser)->end - (parser)->line_start)
 
 void parser_init(Parser *parser, StringView source_code);
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels);
