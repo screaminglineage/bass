@@ -36,5 +36,16 @@ loop:
     jumpz end    ; jump if zero (only jumps when last cmp result was 0)
     jump loop
 end:
-
 ```
+
+## Available Opcodes
+
+nop                     - does nothing
+add, sub, mul, div, mod - performs arithmetic operation and stores the result
+move                    - move value into register or memory
+load, store             - move value into memory using indirect addressing
+print, println          - print registers, memory, numbers, characters, strings
+push, pop               - access the stack
+cmp                     - sets the comparison flag (0 if equal, 1 if first is greater, -1 if first is less)
+jump                    - unconditional jump to label
+jumpz, jumpg, jumpl     - jump is comparsion flag is 0, 1, -1 respectively

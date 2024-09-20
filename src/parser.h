@@ -28,7 +28,7 @@ static const char *const TOKEN_STRING[TOK_LABEL + 1] = {
     [TOK_LITERAL_CHAR]      = "character literal",
     [TOK_LITERAL_STR]       = "string literal",
     [TOK_ADDRESS]           = "address",
-    [TOK_ADDRESS_REG]  = "address register",
+    [TOK_ADDRESS_REG]       = "address register",
     [TOK_LABEL]             = "label",
 };
 
