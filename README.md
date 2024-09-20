@@ -40,12 +40,40 @@ end:
 
 ## Available Opcodes
 
-nop                     - does nothing
-add, sub, mul, div, mod - performs arithmetic operation and stores the result
-move                    - move value into register or memory
-load, store             - move value into memory using indirect addressing
-print, println          - print registers, memory, numbers, characters, strings
-push, pop               - access the stack
-cmp                     - sets the comparison flag (0 if equal, 1 if first is greater, -1 if first is less)
-jump                    - unconditional jump to label
-jumpz, jumpg, jumpl     - jump is comparsion flag is 0, 1, -1 respectively
+`nop`                     - does nothing
+
+### Arithmetic Operations
+
+All of the following perform some arithmetic operation and store the result
+
+- `add`
+- `sub` 
+- `mul` 
+- `div` 
+- `mod`
+
+Examples 
+```asm
+add r0 r0 #1                ; ro := r0 + #1
+mul @45 #90 r5              ; @45 := #90 + r5  
+```
+
+### Memory Operations
+- `move`                 - move value into register or memory
+- `store`                - move value into memory using indirect addressing
+- `load`                 - load value from memory using indirect addressing
+
+### Printing
+- `print`                - print registers, memory, numbers, characters, strings
+- `println`              - same as `print` but puts a newline at the end
+
+### Stack Operations
+- `push`                 - push value into stack
+- `pop`                  - pop value from stack into register or memory 
+
+### Compare and Jumps
+- `cmp`                  - sets the comparison flag (0 if equal, 1 if first is greater, -1 if first is less)
+- `jump`                 - unconditional jump to label
+- `jumpz`                - jump if comparsion flag is 0
+- `jumpg`                - jump if comparison flag is 1
+- `jumpl`                - jump if comparision flag is -1    
