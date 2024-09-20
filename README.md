@@ -47,7 +47,7 @@ end:
 
 ## Bassics
 
-`bass` is designed to mimic the look and feel of assembly. The basic structure of a program is like: 
+`bass` is designed to mimic the look and feel of assembly. Each program consists of a sequence of labels, which act as anchors to jump to, and opcodes along with their respective operands. The basic structure of a program is like: 
 ```asm
 <LABEL>:
     OPCODE <OPERAND_1> <OPERAND_2> ...
