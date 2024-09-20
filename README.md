@@ -27,7 +27,7 @@ move r2 #1
 
 loop:
     add r0 r0 #1
-    print r1
+    println r1
     add r3 r1 r2
     move r1 r2
     move r2 r3
@@ -38,7 +38,48 @@ loop:
 end:
 ```
 
-## Available Opcodes
+## Operands and Labels
+
+Each operand to an opcode can be an immediate value (only integers are supported for now), a register, or a memory address. Immediate values are prefixed with a `#`, registers with an `r` and memory addresses with an `@`.
+
+Character literals (delimited by `'`) and string literals (delimited by `"`) can only be used in `print` and `println` opcodes.
+
+Bare identifiers can only used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. All whitespace/indentation is ignored and is optional.
+
+```asm
+loop:                    ; marks position as `loop`
+    ; Some stuff
+    jump loop            ; jumps to the opcode next to the label `loop`
+```
+
+The special syntax `@r[0-7]` can be used as a shortcut for indirect addressing.
+
+This instructs the operation to use the value in the specified register as a memory address.
+For example, the following program stores, *100* into the memory address, *40* using this syntax, and then prints it
+```asm
+move r0 #40
+move @r0 @100
+println @40
+```
+
+### Registers
+There are 8 registers, `r0` to `r7`, which can be used for direct operations. All registers are initialized to 0 at the program start. There are two special registers, the program counter and stack pointer which are inaccessible through `bass` for now. Another flag variable stores the result of the last comparison (can be 0, -1 or 1) and is also inaccessible through `bass`.
+
+### Memory 
+There is a total of 4MB of addressable memory available, which is also initialized to 0 at program start. All addresses are simply an index from the start of the memory. When storing integers into memory, make sure to properly align them to 4 bytes (or whatever `sizeof(int)` is) to prevent unexpected behaviour. For example, storing elements at `@0`, `@4`, and `@8` simultaneously should be fine, but trying to access or store elements at `@5` will instead create a view into the middle of integers in the memory.
+
+
+## Opcodes
+
+A common pattern with any opcode that stores some value is that, the first operand is the location where the result is stored.
+
+For example,
+```asm
+move r0 #16                ; r0 := 16
+add r1 r0 #1               ; r1 := r0 + 1
+pop @90                    ; @90 := [STACK_TOP] 
+```
+
 
 `nop`                     - does nothing
 
@@ -79,6 +120,7 @@ store r0 #1000           ; store 1000 at memory address 12 (value of register r0
 Examples
 ```asm
 print r1
+print #23
 print 'a'
 print '\n'
 print "hello"
@@ -90,9 +132,9 @@ print "hello"
 
 Examples
 ```asm
-push #12                 ; push 12 at the top of the stack   
+push #12                 ; push 12 onto the stack   
 push r0
-pop @45                  ; store the top of the stack at memory address 45 
+pop @45                  ; pop the stack into memory address 45 
 ```
 
 
@@ -112,3 +154,5 @@ start:
     jump start           ; always jump to label `start` at this point 
 end:
 ```
+
+For more examples, check out the [examples](./examples) directory.
