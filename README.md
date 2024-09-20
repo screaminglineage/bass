@@ -1,12 +1,19 @@
-# Bass (Basic ASSembly)
+# Bass
 
-A simple assembly-like language
+An extremely simple assembly-like interpreted language.  
 
 ## Building and Running
 - Run `gcc src/*.c -O3 -o bass` in the root directory and use the executable generated as `./bass <filename>.bass`
 - Try running some examples such as `./bass examples/fact.bass`
 
-## Sample program
+## Hello World
+Hello World is as simple as 
+
+```asm
+println "hello world"
+```
+
+## Example Programs
 
 The following example performs some basic arithmetic operations and prints the result.
 
@@ -38,17 +45,24 @@ loop:
 end:
 ```
 
-## Operands and Labels
+## Bassics
+
+`bass` is designed to mimic the look and feel of assembly. The basic structure of a program is like: 
+```asm
+<LABEL>:
+    OPCODE <OPERAND_1> <OPERAND_2> ...
+    ...
+```
 
 Each operand to an opcode can be an immediate value (only integers are supported for now), a register, or a memory address. Immediate values are prefixed with a `#`, registers with an `r` and memory addresses with an `@`.
 
 Character literals (delimited by `'`) and string literals (delimited by `"`) can only be used in `print` and `println` opcodes.
 
-Bare identifiers can only used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. All whitespace/indentation is ignored and is optional.
+Bare identifiers can only be used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. All whitespace/indentation is ignored and is optional.
 
 ```asm
 loop:                    ; marks position as `loop`
-    ; Some stuff
+    ; ...
     jump loop            ; jumps to the opcode next to the label `loop`
 ```
 
