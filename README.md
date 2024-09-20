@@ -120,10 +120,10 @@ mul @45 #90 r5           ; @45 := #90 + r5
 
 Examples
 ```asm
-move @250 #12            ; store 12 at memory address 250
+move @250 #12            ; @250 := 12
 
 move r0 #12
-store r0 #1000           ; store 1000 at memory address 12 (value of register r0)   
+store r0 #1000           ; @r0 := 1000 (store 1000 at memory address 12 (value of register r0))
 ```
 
 
@@ -146,9 +146,9 @@ print "hello"
 
 Examples
 ```asm
-push #12                 ; push 12 onto the stack   
-push r0
-pop @45                  ; pop the stack into memory address 45 
+push #12                 ; [STACK_TOP] := 12
+push r0                  ; [STACK_TOP] := r0  
+pop @45                  ; @45 = [STACK_TOP]
 ```
 
 
