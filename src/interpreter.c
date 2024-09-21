@@ -1,11 +1,12 @@
-#include "interpreter.h"
-#include "constants.h"
-#include "parser.h"
-#include "utils.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "interpreter.h"
+#include "constants.h"
+#include "parser.h"
+#include "utils.h"
 
 // evaluates values that are treated as integers
 static inline int eval_int(State *state, Operand operand) {
