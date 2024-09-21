@@ -56,7 +56,7 @@ end:
 
 Each operand to an opcode can be an immediate value (only integers are supported for now), a register, or a memory address. Immediate values are prefixed with a `#`, registers with an `r` and memory addresses with an `@`.
 
-Character literals (delimited by `'`) and string literals (delimited by `"`) can only be used in `print` and `println` opcodes.
+Character literals (delimited by `'`) and string literals (delimited by `"`) can only be used in `print` and `println` opcodes. String literals can span multiple lines as well. Only the escape character `\n` is supported for now by character and string literals.
 
 Bare identifiers can only be used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. All whitespace/indentation is ignored and is optional.
 
