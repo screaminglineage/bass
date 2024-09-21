@@ -187,8 +187,8 @@ bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
                     fprintf(
                         stderr,
                         "bass: expected register, value or memory address but "
-                        "got EOF after at: %d:%zu\n",
-                        parser->line, get_col(parser) - 1);
+                        "got EOF after: %d:%zu\n",
+                        parser->line, get_col(parser));
                 } else {
                     fprintf(
                         stderr,
