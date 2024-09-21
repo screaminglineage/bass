@@ -80,7 +80,7 @@ println @40
 There are 8 registers, `r0` to `r7`, which can be used for direct operations. All registers are initialized to 0 at the program start. There are two special registers, the program counter and stack pointer which are inaccessible through `bass` for now. Another flag variable stores the result of the last comparison (can be 0, -1 or 1) and is also inaccessible through `bass`.
 
 ### Memory 
-There is a total of 4MB of addressable memory available, which is also initialized to 0 at program start. All addresses are simply an index from the start of the memory. When storing integers into memory, make sure to properly align them to 4 bytes (or whatever `sizeof(int)` is) to prevent unexpected behaviour. For example, storing elements at `@0`, `@4`, and `@8` simultaneously should be fine, but trying to access or store elements at `@5` will instead create a view into the middle of integers in the memory.
+A total of 4MB of addressable memory is available, which is also initialized to 0 at program start. All addresses are simply an index from the start of the memory. When storing integers into memory, make sure to properly align them to 4 bytes (or whatever `sizeof(int)` is) to prevent unexpected behaviour. For example, storing elements at `@0`, `@4`, and `@8` simultaneously should be fine, but trying to access or store elements at `@5` will instead create a view into the middle of integers in the memory.
 
 
 ## Opcodes
