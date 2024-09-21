@@ -1,4 +1,3 @@
-#include "utils.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,6 +5,7 @@
 
 #include "constants.h"
 #include "parser.h"
+#include "utils.h"
 
 static inline char next(Parser *parser) {
     if (parser->end < parser->source.length) {
