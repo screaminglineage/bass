@@ -87,6 +87,8 @@ typedef struct {
 } Operand;
 
 typedef struct {
+    int line;
+    size_t col;
     OpType op;
     Operand operands[MAX_OPERANDS];
 } OpCode;

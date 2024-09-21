@@ -275,10 +275,10 @@ bool parse_print(Parser *parser, Operand *operand) {
 
 bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
     OpType op_type;
+    size_t col = parser->start - parser->line_start + 1;
     if (!get_opcode(string, &op_type)) {
         fprintf(stderr, "bass: invalid opcode `%.*s` at: %d:%zu\n",
-                SV_FORMAT(string), parser->line,
-                parser->start - parser->line_start + 1);
+                SV_FORMAT(string), parser->line, col);
         return false;
     }
     parser->start = parser->end;
@@ -298,6 +298,8 @@ bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
         }
     }
     opcode->op = op_type;
+    opcode->line = parser->line;
+    opcode->col = col;
     memcpy(&opcode->operands, operands, sizeof(Operand) * MAX_OPERANDS);
     return true;
 }
