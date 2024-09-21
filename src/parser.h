@@ -121,7 +121,14 @@ typedef struct {
 
 #define get_col(parser) ((parser)->end - (parser)->line_start)
 
-void parser_init(Parser *parser, StringView source_code);
+static inline void parser_init(Parser *parser, StringView source_code) {
+    parser->source = source_code;
+    parser->start = 0;
+    parser->end = 0;
+    parser->line_start = 0;
+    parser->line = 1;
+}
+
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels);
 bool patch_labels(OpCodes *opcodes, Labels labels);
 void display_opcodes(OpCodes ops);

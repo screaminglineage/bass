@@ -13,6 +13,14 @@ typedef struct {
     unsigned char *memory;
 } State;
 
+static inline bool state_init(State *state) {
+    memset(state, 0, sizeof(*state));
+    state->memory = calloc(MEMORY_SIZE, sizeof(state->memory[0]));
+    if (!state->memory) {
+        return false;
+    }
+    return true;
+}
+
 bool interpret(State *state, OpCodes opcodes);
-bool state_init(State *state);
 #endif

@@ -7,14 +7,6 @@
 #include "constants.h"
 #include "parser.h"
 
-void parser_init(Parser *parser, StringView source_code) {
-    parser->source = source_code;
-    parser->start = 0;
-    parser->end = 0;
-    parser->line_start = 0;
-    parser->line = 1;
-}
-
 static inline char next(Parser *parser) {
     if (parser->end < parser->source.length) {
         char next = parser->source.data[parser->end];

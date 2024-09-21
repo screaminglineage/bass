@@ -173,15 +173,6 @@ bool execute_opcode(State *state, OpCode *opcode) {
     return true;
 }
 
-bool state_init(State *state) {
-    memset(state, 0, sizeof(*state));
-    state->memory = calloc(MEMORY_SIZE, sizeof(state->memory[0]));
-    if (!state->memory) {
-        return false;
-    }
-    return true;
-}
-
 bool interpret(State *state, OpCodes opcodes) {
     while (state->reg_pc < opcodes.size) {
         OpCode op = opcodes.data[state->reg_pc++];
