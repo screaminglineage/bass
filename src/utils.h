@@ -54,13 +54,13 @@ static inline bool string_view_eq(StringView a, StringView b) {
 static inline bool read_to_string(const char *filepath, StringView *sv) {
     FILE *file = fopen(filepath, "r");
     if (!file) {
-        fprintf(stderr, "bass: Failed to open source file `%s`: %s\n", filepath, strerror(errno));
+        fprintf(stderr, "bass: failed to open source file `%s`: %s\n", filepath, strerror(errno));
         return false;
     }
     fseek(file, 0, SEEK_END);
     long ret = ftell(file);
     if (ret == -1) {
-        fprintf(stderr, "bass: Couldnt read file position in `%s`: %s\n", filepath, strerror(errno));
+        fprintf(stderr, "bass: couldnt read file position in `%s`: %s\n", filepath, strerror(errno));
         return false;
     }
     // ret cannot be negative at this point
