@@ -1,6 +1,6 @@
 # Bass
 
-An extremely simple assembly-like interpreted language.  
+A simple interpreted language that mimics the look and feel of assembly
 
 ## Building and Running
 - Run `gcc src/*.c -O3 -o bass` in the root directory and use the executable generated as `./bass <filename>.bass`
