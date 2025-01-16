@@ -17,6 +17,7 @@ do {                                                                         \
     (da)->data[(da)->size++] = item;                                           \
 } while (0)
 
+// MODULO that actually wraps-around to b if result is negative
 #define MODULO(a, b) (((a) % (b)) + (b)) % (b);
 
 typedef struct {

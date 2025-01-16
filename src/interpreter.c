@@ -147,6 +147,15 @@ bool execute_opcode(State *state, OpCode *opcode) {
             state->reg_pc = opcode->operands[0].value;
         }
     } break;
+    case OP_CALL: {
+        state->stack[state->reg_sp] = state->reg_pc;
+        state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
+        state->reg_pc = opcode->operands[0].value;
+    } break;
+    case OP_RETURN: {
+        state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
+        state->reg_pc = state->stack[state->reg_sp];
+    } break;
     case OP_PUSH: {
         int first = eval_int(state, opcode->operands[0]);
         state->stack[state->reg_sp] = first;

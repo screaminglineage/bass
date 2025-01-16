@@ -51,6 +51,8 @@ typedef enum {
     OP_JUMPZ,
     OP_JUMPG,
     OP_JUMPL,
+    OP_CALL,
+    OP_RETURN,
 
     OP_COUNT
 } OpType;
@@ -78,7 +80,9 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_JUMP] = {.name = "jump", .arity = 1},
     [OP_JUMPZ] = {.name = "jumpz", .arity = 1},
     [OP_JUMPG] = {.name = "jumpg", .arity = 1},
-    [OP_JUMPL] = {.name = "jumpl", .arity = 1}};
+    [OP_JUMPL] = {.name = "jumpl", .arity = 1},
+    [OP_CALL] = {.name = "call", .arity = 1},
+    [OP_RETURN] = {.name = "return", .arity = 0}};
 
 typedef struct {
     TokenType type;
