@@ -3,7 +3,7 @@
 A simple interpreted language that mimics the look and feel of assembly
 
 ## Building and Running
-- Run `gcc src/*.c -O3 -o bass` in the root directory and use the executable generated as `./bass <filename>.bass`
+- Run `make` in the root directory and use the executable generated as `./bass <filename>.bass`
 - Try running some examples such as `./bass examples/fact.bass`
 
 ## Hello World
