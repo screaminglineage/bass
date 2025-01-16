@@ -1,5 +1,7 @@
 bass
 test.bass
 .cache/*
+TODO.md
 # specifies c99 to clangd
 compile_flags.txt
+
