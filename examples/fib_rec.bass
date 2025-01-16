@@ -1,0 +1,39 @@
+; Fibonacci Implemented using recursive calls
+
+jump main
+
+fib:
+  ; Base Cases
+  cmp r1 #0
+  jumpz zero
+  cmp r1 #1
+  jumpz one
+
+; fib(n - 1)
+  push r1
+  sub r1 r1 #1      
+  call fib
+  
+; fib(n - 2)
+  pop r1
+  sub r1 r1 #2      
+  push r3
+  call fib
+
+; result = fib(n - 1) + fib(n - 2)
+  pop r2
+  add r3 r3 r2
+  return
+  
+zero:
+  move r3 #0
+  return
+one:
+  move r3 #1
+  return
+
+main:
+  move r1 #10
+  call fib
+  println r3
+  

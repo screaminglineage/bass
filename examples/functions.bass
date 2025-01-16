@@ -1,0 +1,17 @@
+; Using `call` and `return` for basic function calling
+
+jump main
+
+func2:
+  println "inside func2"
+  return
+
+func:
+  println "inside func"
+  call func2
+  return
+
+main:
+  println "before"
+  call func
+  println "after"
