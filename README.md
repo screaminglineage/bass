@@ -155,9 +155,11 @@ pop @45                  ; @45 = [STACK_TOP]
 ### Compare and Jumps
 - `cmp`                  - sets the comparison flag (0 if equal, 1 if first is greater, -1 if first is less)
 - `jump`                 - unconditional jump to label
-- `jumpz`                - jump if comparsion flag is 0
+- `jumpz`                - jump if comparison flag is 0
 - `jumpg`                - jump if comparison flag is 1
-- `jumpl`                - jump if comparision flag is -1
+- `jumpl`                - jump if comparison flag is -1
+- `call`                 - jump to a label after pushing the current program counter onto the stack
+- `return`               - pop the stack and jump to the address
 
 Examples
 ```asm
@@ -167,6 +169,16 @@ start:
     add r0 r0 #1
     jump start           ; always jump to label `start` at this point 
 end:
+```
+
+```asm
+jump main
+hello:
+    println "Hello World"
+    return
+
+main:
+    call hello
 ```
 
 For more examples, check out the [examples](./examples) directory.
