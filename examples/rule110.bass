@@ -3,8 +3,13 @@
 
 ; This example uses the memory as a 1D array and indexes into it at 2 places
 ; One for the current gen and another for the next gen
-; At the end of an iteration the indices are swapped using stack push and pop operations
+; At the end of an iteration the indices are swapped using `push` and `pop` operations
 ; The edges are padded by 0's (memory is initially set to all 0's automatically)
+; 
+; Note that the implementation is pretty scuffed as it was made before `call` and `return`
+; were added to the language. So it only uses `jump` instructions which makes the control
+; flow a giant mess.
+
 
 move @4 #1
 move @8 #1
@@ -108,14 +113,14 @@ print1:
 start:
     move r0 #4
     move r7 #48
-    jump loopmain
+    jump mainloop
     
 main:
     pop r7
     pop r0
     cmp r6 #50              ; Modify this comparison to increase the no. of iterations
     jumpz over
-loopmain:
+mainloop:
     print '\n'
     push r0
     push r7
