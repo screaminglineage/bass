@@ -144,8 +144,8 @@ typedef struct {
             (parser)->end - (parser)->start                                    \
     }
 
-// #define get_slice(parser, start, end)
-// (StringView){&(parser)->source.data[(start)], (end) - (start)}
+#define get_slice(parser, start, end) \
+    (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 #define get_col(parser) ((parser)->end - (parser)->line_start)
 #define get_col_start(parser) ((parser)->start - (parser)->line_start + 1)

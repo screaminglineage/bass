@@ -87,18 +87,16 @@ static inline StringView parse_identifier(Parser *parser) {
 // parses character or string literals delimited by `quote`
 bool parse_quoted_char(Parser *parser, StringView *string, char quote,
                        const char *type) {
-    parser->start = parser->end;
-    while (peek(parser) != quote && peek(parser) != '\0') {
+    while (peek(parser) != quote && peek(parser) != '\0' && peek(parser) != '\n') {
         next(parser);
     }
     if (peek(parser) != quote) {
         fprintf(stderr, "bass:%d:%zu: unterminated %s literal\n",
-                parser->line, parser->start, type);
+                parser->line, get_col_start(parser), type);
         return false;
     }
-    *string = get_string(parser);
+    *string = get_slice(parser, parser->start + 1, parser->end);
     next(parser);
-    parser->start = parser->end;
     return true;
 }
 
@@ -117,7 +115,7 @@ bool parse_register(Parser *parser, long *num, StringView *string) {
 }
 
 
-bool parse_register_from_identifier(Parser *parser, StringView identifier, long *num) {
+bool parse_register_from_identifier(StringView identifier, long *num) {
     if (identifier.length != 2) return false;
     if (identifier.data[0] != 'r') return false;
     if (!('0' <= identifier.data[1] && identifier.data[1] < REG_COUNT + '0')) {
@@ -314,54 +312,9 @@ bool parse_opcode(Parser *parser, StringView string, OpCode *opcode) {
     return true;
 }
 
-
-// bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
-//     char current;
-//     size_t op_index = 0;
-//     while ((current = next(parser))) {
-//         if (isalpha(current)) {
-//             StringView string = parse_identifier(parser);
-//             char next_char = next(parser);
-//             // parse label
-//             if (next_char == ':') {
-//                 Label label = {string, op_index};
-//                 dyn_append(labels, label);
-//
-//                 // parse opcode
-//             } else if ((isspace(next_char) || next_char == '\0')) {
-//                 OpCode opcode;
-//                 if (!parse_opcode(parser, string, &opcode)) {
-//                     return false;
-//                 }
-//                 dyn_append(opcodes, opcode);
-//                 op_index++;
-//             } else {
-//                 fprintf(stderr, "bass: unexpected character `%c` at: %d:%zu\n",
-//                         next_char, parser->line, get_col(parser));
-//                 return false;
-//             }
-//             // skip comments
-//         } else if (current == ';') {
-//             while ((next(parser)) != '\n')
-//                 ;
-//         } else if (current == '\n') {
-//             parser->line_start = parser->end;
-//             parser->line++;
-//         } else if (!(isspace(current) || current == '\0')) {
-//             fprintf(stderr,
-//                     "bass: expected opcode or label, got `%c` at: %d:%zu\n",
-//                     current, parser->line, get_col(parser));
-//             return false;
-//         }
-//         parser->start = parser->end;
-//     }
-//     return true;
-// }
-
-// TODO: get the column from where the token starts
-// Currently it just gets the column after the token ends
 #define MAKE_TOKEN(parser, type, string, value) \
-    ((Token){(parser)->line, get_col((parser)), (type), (string), {(value)}})
+    ((Token){(parser)->line, get_col_start((parser)), (type), (string), {(value)}})
+
 
 bool next_token(Parser *parser, Token *token) {
     char current = 0;
@@ -433,11 +386,8 @@ bool next_token(Parser *parser, Token *token) {
                 // parsing as address at register
             } else if (peek(parser) == 'r') {
                 next(parser);
-                // if (!parse_register(parser, &num, &string)) {
-                //     return false;
-                // }
                 StringView identifier = parse_identifier(parser);
-                if (!parse_register_from_identifier(parser, (StringView){identifier.data+1, identifier.length - 1} , &num)) {
+                if (!parse_register_from_identifier((StringView){identifier.data+1, identifier.length - 1} , &num)) {
                     return false;
                 }
                 *token = MAKE_TOKEN(parser, TOK_ADDRESS_REG, identifier, num);
@@ -460,7 +410,7 @@ bool next_token(Parser *parser, Token *token) {
         default: {
             if (isalpha(current)) {
                 StringView identifier = parse_identifier(parser);
-                if (parse_register_from_identifier(parser, identifier, &num)) {
+                if (parse_register_from_identifier(identifier, &num)) {
                     *token = MAKE_TOKEN(parser, TOK_REGISTER, identifier, num);
                 } else {
                     string = identifier;
@@ -505,7 +455,7 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
         if (!next_token(parser, &tok)) {
             return false;
         }
-        printf("%s `%.*s`\n", TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
+        printf("%d:%zu: %s `%.*s`\n", tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
         continue;
 
         if (tok.type == TOK_LABEL) {
