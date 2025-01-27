@@ -96,6 +96,12 @@ static inline void execute_print(State *state, Operand operand) {
     }
 }
 
+static inline int eval_jump(State *state, OpCode *opcode) {
+    return (opcode->operands[0].type == TOK_LABEL)
+               ? opcode->operands[0].value
+               : eval_int(state, opcode->operands[0]);
+}
+
 bool execute_opcode(State *state, OpCode *opcode) {
     switch (opcode->op) {
     case OP_ADD:
@@ -130,27 +136,27 @@ bool execute_opcode(State *state, OpCode *opcode) {
         state->flag_cmp = (first < second) ? -1 : (first > second) ? +1 : 0;
     } break;
     case OP_JUMP: {
-        state->reg_pc = opcode->operands[0].value;
+        state->reg_pc = eval_jump(state, opcode);
     } break;
     case OP_JUMPZ: {
         if (state->flag_cmp == 0) {
-            state->reg_pc = opcode->operands[0].value;
+            state->reg_pc = eval_jump(state, opcode);
         }
     } break;
     case OP_JUMPG: {
         if (state->flag_cmp == 1) {
-            state->reg_pc = opcode->operands[0].value;
+            state->reg_pc = eval_jump(state, opcode);
         }
     } break;
     case OP_JUMPL: {
         if (state->flag_cmp == -1) {
-            state->reg_pc = opcode->operands[0].value;
+            state->reg_pc = eval_jump(state, opcode);
         }
     } break;
     case OP_CALL: {
         state->stack[state->reg_sp] = state->reg_pc;
         state->reg_sp = (state->reg_sp + 1) % STACK_MAX;
-        state->reg_pc = opcode->operands[0].value;
+        state->reg_pc = eval_jump(state, opcode);
     } break;
     case OP_RETURN: {
         state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
