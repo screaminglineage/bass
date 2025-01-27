@@ -1,0 +1,11 @@
+; `jump` can be used to jump to any opcode
+; here opcode 7 (the final println) is the target of the jump
+
+push #6
+println "hello"
+pop r0
+jump r0
+println "foo"
+println "bar"
+println "world"
+

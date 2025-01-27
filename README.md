@@ -161,6 +161,8 @@ pop @45                  ; @45 = [STACK_TOP]
 - `call`                 - jump to a label after pushing the current program counter onto the stack
 - `return`               - pop the stack and jump to the address
 
+These opcodes can also be used with literals or registers to jump to arbitrary opcodes. For example, opcodes are 0-indexed, so `jump #0` will start executing the program from the beginning.
+
 Examples
 ```asm
 start:
