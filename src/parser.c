@@ -267,10 +267,10 @@ bool next_token(Parser *parser, Token *token) {
                         *token = MAKE_TOKEN(parser, TOK_LABEL, string, -1);
                     } else {
                         OpType op_type = 0;
-                        if (!get_opcode(string, &op_type)) {
-                            *token = MAKE_TOKEN(parser, TOK_IDENTIFIER, string, -1);
-                        } else {
+                        if (get_opcode(string, &op_type)) {
                             *token = MAKE_TOKEN(parser, TOK_OPCODE, string, op_type);
+                        } else {
+                            *token = MAKE_TOKEN(parser, TOK_IDENTIFIER, string, -1);
                         }
                     }
                 }
@@ -331,32 +331,23 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
 
 
 
-// TODO: Multiple labels with the same name causes only the first one to be
-// valid. Maybe make `Labels` a hashmap or set instead
-bool patch_labels(OpCodes *opcodes, Labels labels) {
-    for (size_t i = 0; i < opcodes->size; i++) {
-        bool found = false;
-        OpCode opcode = opcodes->data[i];
-        if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
-            opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
-            opcode.op == OP_CALL) {
-            StringView opcode_label = opcode.operands[0].string;
-            for (size_t j = 0; j < labels.size; j++) {
-                if (string_view_eq(opcode_label, labels.data[j].name)) {
-                    opcodes->data[i].operands[0].value = labels.data[j].index;
-                    found = true;
-                    break;
+// TODO: Duplicate labels cause only the last one to be valid.
+// Make `Labels` a hashmap or set instead or check for duplicate labels.
+void patch_labels(OpCodes *opcodes, Labels labels) {
+    for (size_t i = 0; i < labels.size; i++) {
+        StringView label_name = labels.data[i].name;
+        for (size_t j = 0; j < opcodes->size; j++) {
+            OpCode opcode = opcodes->data[j];
+            if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
+                opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
+                opcode.op == OP_CALL) {
+                StringView opcode_label = opcode.operands[0].string;
+                if (string_view_eq(opcode_label, label_name)) {
+                    opcodes->data[j].operands[0].value = labels.data[i].index;
                 }
-            }
-            if (!found) {
-                fprintf(stderr,
-                        "bass: couldnt find label: `%.*s` at opcode: `%s`\n",
-                        SV_FORMAT(opcode_label), OPCODES[opcode.op].name);
-                return false;
             }
         }
     }
-    return true;
 }
 
 

@@ -97,7 +97,7 @@ static inline void execute_print(State *state, Operand operand) {
 }
 
 static inline int eval_jump(State *state, OpCode *opcode) {
-    return (opcode->operands[0].type == TOK_LABEL)
+    return (opcode->operands[0].type == TOK_IDENTIFIER)
                ? opcode->operands[0].value
                : eval_int(state, opcode->operands[0]);
 }
