@@ -116,6 +116,22 @@ bool parse_register(Parser *parser, long *num, StringView *string) {
     return true;
 }
 
+
+bool parse_register_from_identifier(Parser *parser, StringView identifier, long *num) {
+    if (identifier.length != 2) return false;
+    if (identifier.data[0] != 'r') return false;
+    if (!('0' <= identifier.data[1] && identifier.data[1] < REG_COUNT + '0')) {
+        // TODO: this help text is probably useless
+        // fprintf(stderr,
+        //         "bass:%d:%zu: invalid register `%d`\n"
+        //         "help: registers can range from 0 to %d\n",
+        //         parser->line, get_col_start(parser), identifier.data[1] - '0', REG_COUNT - 1);
+        return false;
+    }
+    *num = identifier.data[1] - '0';
+    return true;
+}
+
 // TODO: the function assignes a value of long to an int (num is long, Operand
 // has int member variable)
 bool parse_operands(Parser *parser, OpType op, Operand operands[MAX_OPERANDS]) {
@@ -352,24 +368,23 @@ bool next_token(Parser *parser, Token *token) {
     long num = 0;
     StringView string = {0};
 
-    while (isspace(peek(parser))) {
-        current = next(parser);
-        if (current == '\n') {
-            parser->line_start = parser->end;
+    do {
+        while (isspace(peek(parser))) {
+            current = next(parser);
+            if (current == '\n') {
+                parser->line_start = parser->end;
+                parser->line += 1;
+            }
+        }
+        while (peek(parser) == ';') {
+            while ((next(parser)) != '\n');
             parser->line += 1;
         }
-    }
+    } while(isspace(peek(parser)));
     parser->start = parser->end;
 
     current = next(parser);
     switch (current) {
-        case 'r': {
-            TODO("parse register as identifier");
-            // if (!parse_register(parser, &num, &string)) {
-            //     return false;
-            // }
-            // operands[i++] = (Operand){TOK_REGISTER, string, num};
-        } break;
         case '"': {
             if (!parse_quoted_char(parser, &string, '\"', "string")) {
                 return false;
@@ -383,7 +398,7 @@ bool next_token(Parser *parser, Token *token) {
             }
             if (string.length == 0) {
                 fprintf(stderr, "bass:%d:%zu: empty character literal\n", 
-                        parser->line, get_col(parser));
+                        parser->line, get_col_start(parser));
                 return false;
             }
 
@@ -395,7 +410,7 @@ bool next_token(Parser *parser, Token *token) {
                 // regular character
                 if (string.length > 1) {
                     fprintf(stderr, "bass:%d:%zu character literal: `%.*s` is too long\n",
-                            parser->line, get_col(parser), SV_FORMAT(string));
+                            parser->line, get_col_start(parser), SV_FORMAT(string));
                     return false;
                 }
                 *token = MAKE_TOKEN(parser, TOK_LITERAL_CHAR, string, string.data[0]);
@@ -418,21 +433,25 @@ bool next_token(Parser *parser, Token *token) {
                 // parsing as address at register
             } else if (peek(parser) == 'r') {
                 next(parser);
-                if (!parse_register(parser, &num, &string)) {
+                // if (!parse_register(parser, &num, &string)) {
+                //     return false;
+                // }
+                StringView identifier = parse_identifier(parser);
+                if (!parse_register_from_identifier(parser, (StringView){identifier.data+1, identifier.length - 1} , &num)) {
                     return false;
                 }
-                *token = MAKE_TOKEN(parser, TOK_ADDRESS_REG, string, num);
+                *token = MAKE_TOKEN(parser, TOK_ADDRESS_REG, identifier, num);
             } else {
                 if (peek(parser) == '\n') {
                     fprintf(
                         stderr,
                         "bass:%d:%zu: expected register or value after `@` got `\\n`\n",
-                        parser->line, get_col(parser) + 2);
+                        parser->line, get_col_start(parser) + 2);
                 } else {
                     fprintf(
                         stderr,
                         "bass:%d:%zu: expected register or value after `@` got `%c`\n",
-                        parser->line, get_col(parser) + 2, peek(parser));
+                        parser->line, get_col_start(parser) + 2, peek(parser));
                 }
                 return false;
             }
@@ -440,11 +459,27 @@ bool next_token(Parser *parser, Token *token) {
 
         default: {
             if (isalpha(current)) {
-                TODO("parse identifier");
+                StringView identifier = parse_identifier(parser);
+                if (parse_register_from_identifier(parser, identifier, &num)) {
+                    *token = MAKE_TOKEN(parser, TOK_REGISTER, identifier, num);
+                } else {
+                    string = identifier;
+                    if (peek(parser) == ':') {
+                        next(parser);
+                        *token = MAKE_TOKEN(parser, TOK_LABEL, string, 0);
+                    } else {
+                        OpType op_type = 0;
+                        if (!get_opcode(string, &op_type)) {
+                            *token = MAKE_TOKEN(parser, TOK_IDENTIFIER, string, 0);
+                        } else {
+                            *token = MAKE_TOKEN(parser, TOK_OPCODE, string, op_type);
+                        }
+                    }
+                }
             } else {
                 (current == '\0')
-                    ? fprintf(stderr, "bass:%d:%zu unexpected EOF\n", parser->line, get_col(parser))
-                    : fprintf(stderr, "bass:%d:%zu unexpected character `%c`\n", parser->line, get_col(parser), current);
+                    ? fprintf(stderr, "bass:%d:%zu unexpected EOF\n", parser->line, get_col_start(parser))
+                    : fprintf(stderr, "bass:%d:%zu unexpected character `%c`\n", parser->line, get_col_start(parser), current);
 
                 if (isdigit(current)) {
                     fprintf(
@@ -453,10 +488,10 @@ bool next_token(Parser *parser, Token *token) {
                         "for a literal value or `@` for a memory address\n",
                         current);
                 }
+                return false;
             }
             // TODO: mention this help text when parsing specific opcodes instead
             // fprintf(stderr, "help: opcode `%s` takes %d arguments but got %d instead\n", OPCODES[op].name, OPCODES[op].arity, i);
-            return false;
         }
     }
     parser->start = parser->end;
@@ -544,14 +579,14 @@ void display_opcodes(OpCodes ops) {
             case TOK_ADDRESS_REG:
                 printf("\tADDRESS AT REGISTER: %d\n", val);
                 break;
-            case TOK_LABEL: {
+            case TOK_IDENTIFIER: {
                 StringView str = op.operands[i].string;
                 printf("\tLABEL: %.*s (to opcode: %d)\n", SV_FORMAT(str), val);
             } break;
-            case TOK_OPCODE: {
-                UNREACHABLE_INFO("cannot have opcodes as operand");
-            } break;
-            case TOK_COUNT: UNREACHABLE();
+            case TOK_LABEL:
+            case TOK_OPCODE:
+            case TOK_COUNT: 
+                UNREACHABLE_INFO("Incorrect type as operand");
             }
         }
     }

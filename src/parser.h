@@ -13,6 +13,8 @@ typedef struct {
     int line;
 } Parser;
 
+
+// TODO: add a token type for EOF
 typedef enum {
     TOK_REGISTER,
     TOK_LITERAL_NUM,
@@ -20,6 +22,7 @@ typedef enum {
     TOK_LITERAL_STR,
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
+    TOK_IDENTIFIER,
     TOK_LABEL,
     TOK_OPCODE,
 
@@ -33,6 +36,7 @@ static const char *const TOKEN_STRING[TOK_COUNT] = {
     [TOK_LITERAL_STR]       = "string literal",
     [TOK_ADDRESS]           = "address",
     [TOK_ADDRESS_REG]       = "address register",
+    [TOK_IDENTIFIER]        = "identifier",
     [TOK_LABEL]             = "label",
     [TOK_OPCODE]            = "opcode",
 };
@@ -144,6 +148,7 @@ typedef struct {
 // (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 #define get_col(parser) ((parser)->end - (parser)->line_start)
+#define get_col_start(parser) ((parser)->start - (parser)->line_start + 1)
 
 static inline void parser_init(Parser *parser, StringView source_code) {
     parser->source = source_code;
