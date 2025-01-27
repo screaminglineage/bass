@@ -88,7 +88,7 @@ end:
     push r1
     move r4 #0              ; Ensure r4 is 0
 
-print:
+print110:
     cmp r4 #10             ; Modify if array size is changed (also see in rule110)
     jumpz next
 
@@ -99,7 +99,7 @@ print:
 back:
     add r0 r0 #4
     add r4 r4 #1
-    jump print
+    jump print110
 
 print0:
     print ' '
