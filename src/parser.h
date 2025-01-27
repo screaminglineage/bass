@@ -15,14 +15,23 @@ typedef struct {
 
 
 // TODO: add a token type for EOF
+
+// order of elements matters in this enum
 typedef enum {
+    // applicable as operands to jump
+    TOK_IDENTIFIER = 0,
+
+    // applicable as operands in general
     TOK_REGISTER,
     TOK_LITERAL_NUM,
-    TOK_LITERAL_CHAR,
-    TOK_LITERAL_STR,
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
-    TOK_IDENTIFIER,
+
+    // applicable as operands to print
+    TOK_LITERAL_CHAR,
+    TOK_LITERAL_STR,
+
+    // not applicable as operands
     TOK_LABEL,
     TOK_OPCODE,
 
