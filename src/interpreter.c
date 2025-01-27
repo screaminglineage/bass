@@ -52,8 +52,8 @@ static inline bool set_lval(State *state, OpCode *op, int rval) {
     }
 }
 
-// TODO: wtf is this shit
-// need this function to make compiler happy
+// // TODO: wtf is this shit
+// // need this function to make compiler happy
 static inline int unreachable() {
     assert(false && "Unreachable");
     return 0;
@@ -73,8 +73,8 @@ bool calculate_and_set(State *state, OpCode *opcode) {
     OpType op = opcode->op;
 
     if ((op == OP_DIV || op == OP_MOD) && second == 0) {
-        fprintf(stderr, "bass: division by 0 at opcode `%s` at: %d:%zu\n",
-                OPCODES[op].name, opcode->line, opcode->col);
+        fprintf(stderr, "bass:%d:%zu: division by 0 at opcode `%s`\n",
+                opcode->line, opcode->col, OPCODES[op].name);
         return false;
     }
     if (!set_lval(state, opcode, CALCULATE(op, first, second))) {

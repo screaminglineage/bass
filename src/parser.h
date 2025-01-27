@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "utils.h"
 
+// TODO: rename Parser to Lexer
 typedef struct {
     StringView source;
     size_t start;
@@ -19,10 +20,13 @@ typedef enum {
     TOK_LITERAL_STR,
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
-    TOK_LABEL
+    TOK_LABEL,
+    TOK_OPCODE,
+
+    TOK_COUNT
 } TokenType;
 
-static const char *const TOKEN_STRING[TOK_LABEL + 1] = {
+static const char *const TOKEN_STRING[TOK_COUNT] = {
     [TOK_REGISTER]          = "register",
     [TOK_LITERAL_NUM]       = "numeric literal",
     [TOK_LITERAL_CHAR]      = "character literal",
@@ -30,6 +34,7 @@ static const char *const TOKEN_STRING[TOK_LABEL + 1] = {
     [TOK_ADDRESS]           = "address",
     [TOK_ADDRESS_REG]       = "address register",
     [TOK_LABEL]             = "label",
+    [TOK_OPCODE]            = "opcode",
 };
 
 typedef enum {
@@ -58,6 +63,18 @@ typedef enum {
 } OpType;
 
 typedef struct {
+    int line;
+    size_t col;
+    TokenType type;
+    StringView str;
+    union {
+        int as_int;
+        OpType as_opcode;
+    };
+} Token;
+
+
+typedef struct {
     const char *name;
     int arity; // no of arguments it takes
 } OpCodeData;
@@ -83,6 +100,9 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_JUMPL] = {.name = "jumpl", .arity = 1},
     [OP_CALL] = {.name = "call", .arity = 1},
     [OP_RETURN] = {.name = "return", .arity = 0}};
+
+
+// TODO: redefine these as containing a Token
 
 typedef struct {
     TokenType type;

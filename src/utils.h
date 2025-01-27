@@ -17,6 +17,10 @@ do {                                                                         \
     (da)->data[(da)->size++] = item;                                           \
 } while (0)
 
+#define TODO(str) (printf("TODO: %s\n", str), abort())
+#define UNREACHABLE_INFO(str) (printf("UNREACHABLE: %s\n", str), abort())
+#define UNREACHABLE() (printf("UNREACHABLE"), abort())
+
 // MODULO that actually wraps-around to b if result is negative
 #define MODULO(a, b) (((a) % (b)) + (b)) % (b);
 
@@ -41,6 +45,7 @@ static inline bool string_view_cstring_eq(StringView a, const char *b) {
 }
 
 static inline char *string_view_to_cstring(StringView sv) {
+    // TODO: this is never freed
     char *str =  malloc(sizeof(char)*(sv.length + 1));
     memcpy(str, sv.data, sv.length);
     str[sv.length] = 0;
@@ -68,6 +73,7 @@ static inline bool read_to_string(const char *filepath, StringView *sv) {
     size_t size = ret;
     rewind(file);
 
+    // data lives for the entire compilation phase
     char *data = malloc(size + 1);
     if (!data) {
         return false;
