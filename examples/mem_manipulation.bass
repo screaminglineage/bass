@@ -3,21 +3,21 @@
 
 write:
     cmp r0 #40
-    jumpz print
+    jumpz print_stuff
     
     store r0 #123
     add r0 r0 #4
     jump write
 
-print:                  ; labels can have similar names to opcodes
+print_stuff:
     cmp r0 #0
     jumpz end
-    
+
     sub r0 r0 #4
     load r1 r0
     print r1
     print ' '
-    jump print
+    jump print_stuff
 end:
     print '\n'
 
