@@ -34,6 +34,7 @@ typedef enum {
     // not applicable as operands
     TOK_LABEL,
     TOK_OPCODE,
+    TOK_EOF,
 
     TOK_COUNT
 } TokenType;
@@ -48,6 +49,7 @@ static const char *const TOKEN_STRING[TOK_COUNT] = {
     [TOK_IDENTIFIER]        = "identifier",
     [TOK_LABEL]             = "label",
     [TOK_OPCODE]            = "opcode",
+    [TOK_EOF]               = "EOF",
 };
 
 typedef enum {

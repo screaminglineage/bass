@@ -141,9 +141,10 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
 
 bool parse_opcode(Parser *parser, Token opcode_token, OpCode *opcode) {
     OpType op_type = opcode_token.as_opcode;
-    if (op_type == OP_JUMP || op_type == OP_JUMPZ || op_type == OP_JUMPG 
-        || op_type == OP_JUMPL || op_type == OP_CALL) {
-        if (!parse_operands(parser, op_type, TOK_IDENTIFIER, TOK_IDENTIFIER, opcode))
+    if (op_type == OP_JUMP || op_type == OP_JUMPZ 
+        || op_type == OP_JUMPG || op_type == OP_JUMPL 
+        || op_type == OP_CALL) {
+        if (!parse_operands(parser, op_type, TOK_IDENTIFIER, TOK_ADDRESS_REG, opcode))
             return false;
     } else if (op_type == OP_PRINT || op_type == OP_PRINTLN) {
         if (!parse_operands(parser, op_type, TOK_REGISTER, TOK_LITERAL_STR, opcode))
@@ -273,10 +274,11 @@ bool next_token(Parser *parser, Token *token) {
                         }
                     }
                 }
+            } else if (current == '\0') {
+                *token = MAKE_TOKEN(parser, TOK_EOF, (StringView){0}, -1);
             } else {
-                (current == '\0')
-                    ? fprintf(stderr, "bass:%d:%zu unexpected EOF\n", parser->line, get_col_start(parser))
-                    : fprintf(stderr, "bass:%d:%zu unexpected character `%c`\n", parser->line, get_col_start(parser), current);
+                fprintf(stderr, "bass:%d:%zu unexpected character `%c`\n",
+                        parser->line, get_col_start(parser), current);
 
                 if (isdigit(current)) {
                     fprintf(
@@ -300,28 +302,31 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     while (true) {
         Token tok = {0};
         if (!next_token(parser, &tok)) {
-            display_opcodes(*opcodes);
             return false;
         }
-        printf("%d:%zu: %s `%.*s`\n", tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
+        // printf("%d:%zu: %s `%.*s`\n", tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
 
-        if (tok.type == TOK_LABEL) {
-            dyn_append(labels, ((Label){tok.str, op_index}));
-        } else if (tok.type == TOK_OPCODE) {
-            OpCode opcode = {0};
-            if (!parse_opcode(parser, tok, &opcode)) {
-                TODO("failed to parse opcode error");
-            }
-            dyn_append(opcodes, opcode);
-            op_index++;
-        } else {
-            fprintf(stderr,
-                    "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
-                    tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
-            return false;
+        switch (tok.type) {
+            case TOK_LABEL: {
+                dyn_append(labels, ((Label){tok.str, op_index}));
+            } break;
+            case TOK_OPCODE: {
+                OpCode opcode = {0};
+                if (!parse_opcode(parser, tok, &opcode)) {
+                    return false;
+                }
+                dyn_append(opcodes, opcode);
+                op_index++;
+            } break;
+            case TOK_EOF: return true;
+            default: {
+                fprintf(stderr,
+                        "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
+                        tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
+                return false;
+            } break;
         }
     }
-    return true;
 }
 
 
@@ -386,7 +391,8 @@ void display_opcodes(OpCodes ops) {
             } break;
             case TOK_LABEL:
             case TOK_OPCODE:
-            case TOK_COUNT: 
+            case TOK_EOF:
+            case TOK_COUNT:
                 UNREACHABLE_INFO("Incorrect type as operand");
             }
         }
