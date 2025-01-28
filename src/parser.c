@@ -252,7 +252,7 @@ bool next_token(Parser *parser, Token *token) {
         default: {
             if (isalpha(current)) {
                 string = parse_identifier(parser);
-                if (!isspace(peek(parser)) && peek(parser) != '\0') {
+                if (!isspace(peek(parser)) && peek(parser) != '\0' && peek(parser) != ':') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
                             parser->line, get_col_start(parser), peek(parser));
                     return false;
@@ -293,7 +293,23 @@ bool next_token(Parser *parser, Token *token) {
     return true;
 }
 
+typedef struct {
+    size_t *data;
+    size_t size;
+    size_t capacity;
+} JumpIndexes;
+
+int find_label(Labels *labels, StringView name) {
+    for (size_t i = 0; i < labels->size; i++) {
+        if (string_view_eq(labels->data[i].name, name)) return i;
+    }
+    return -1;
+}
+
+// TODO: Duplicate labels cause only the last one to be valid.
+// Make `Labels` a hashmap or set instead or check for duplicate labels.
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
+    JumpIndexes saved_jumps = {0};
     int op_index = 0;
     while (true) {
         Token tok = {0};
@@ -303,12 +319,33 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
 
         switch (tok.type) {
             case TOK_LABEL: {
-                dyn_append(labels, ((Label){tok.str, op_index}));
+                Label label = {tok.str, op_index};
+                // patching jumps
+                for (size_t i = 0; i < saved_jumps.size; i++) {
+                    size_t jump_index = saved_jumps.data[i];
+                    if (string_view_eq(opcodes->data[jump_index].operands[0].str, label.name)) {
+                        opcodes->data[jump_index].operands[0].as_int = label.index;
+                        dyn_remove(&saved_jumps, i, size_t);
+                        i--;
+                    }
+                }
+                dyn_append(labels, label);
             } break;
             case TOK_OPCODE: {
                 OpCode opcode = {0};
                 if (!parse_opcode(parser, tok, &opcode)) {
                     return false;
+                }
+                // patching jumps
+                if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
+                    opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
+                    opcode.op == OP_CALL) {
+                    int label_index = find_label(labels, opcode.operands[0].str);
+                    if (label_index >= 0) {
+                        opcode.operands[0].as_int = labels->data[label_index].index;
+                    } else {
+                        dyn_append(&saved_jumps, op_index);
+                    }
                 }
                 dyn_append(opcodes, opcode);
                 op_index++;
@@ -322,26 +359,7 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             } break;
         }
     }
-}
-
-
-// TODO: Duplicate labels cause only the last one to be valid.
-// Make `Labels` a hashmap or set instead or check for duplicate labels.
-void patch_labels(OpCodes *opcodes, Labels labels) {
-    for (size_t i = 0; i < labels.size; i++) {
-        StringView label_name = labels.data[i].name;
-        for (size_t j = 0; j < opcodes->size; j++) {
-            OpCode opcode = opcodes->data[j];
-            if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
-                opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
-                opcode.op == OP_CALL) {
-                StringView opcode_label = opcode.operands[0].str;
-                if (string_view_eq(opcode_label, label_name)) {
-                    opcodes->data[j].operands[0].as_int = labels.data[i].index;
-                }
-            }
-        }
-    }
+    assert(saved_jumps.size == 0 && "Saved jumps should be empty at this point");
 }
 
 

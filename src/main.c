@@ -20,7 +20,7 @@ bool parse_and_interpret(const char *source_file, bool debug) {
     if (!parse(&p, &opcodes, &labels)) {
         return false;
     }
-    patch_labels(&opcodes, labels);
+    // patch_labels(&opcodes, labels);
 
     if (debug) {
         printf("Opcodes:\n");

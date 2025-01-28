@@ -17,6 +17,15 @@ do {                                                                         \
     (da)->data[(da)->size++] = item;                                           \
 } while (0)
 
+#define dyn_remove(da, index, type)                                         \
+do {                                                                        \
+    assert((index) < (da)->size && "index out of bounds");                  \
+    type tmp = (da)->data[(index)];                                         \
+    (da)->data[(index)] = (da)->data[(da)->size - 1];                       \
+    (da)->data[(da)->size - 1] = tmp;                                       \
+    (da)->size--;                                                           \
+} while (0)
+
 #define TODO(str) (printf("TODO: %s\n", str), abort())
 #define UNREACHABLE_INFO(str) (printf("UNREACHABLE: %s\n", str), abort())
 #define UNREACHABLE() (printf("UNREACHABLE"), abort())
