@@ -76,7 +76,6 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     return true;
 }
 
-// TODO: Reset the parser->start
 static inline StringView parse_identifier(Parser *parser) {
     while (isalnum(peek(parser)) || peek(parser) == '_') {
         next(parser);
@@ -129,8 +128,7 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
                     operand.line, operand.col, TOKEN_STRING[operand.type], 
                     SV_FORMAT(operand.str), OPCODES[op_type].name);
             fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
-                    OPCODES[op_type].name,
-                    OPCODES[op_type].arity);
+                    OPCODES[op_type].name, OPCODES[op_type].arity);
             return false;
         }
     }
@@ -289,8 +287,6 @@ bool next_token(Parser *parser, Token *token) {
                 }
                 return false;
             }
-            // TODO: mention this help text when parsing specific opcodes instead
-            // fprintf(stderr, "help: opcode `%s` takes %d arguments but got %d instead\n", OPCODES[op].name, OPCODES[op].arity, i);
         }
     }
     parser->start = parser->end;
@@ -328,7 +324,6 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
         }
     }
 }
-
 
 
 // TODO: Duplicate labels cause only the last one to be valid.
