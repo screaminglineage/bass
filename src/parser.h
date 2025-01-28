@@ -136,6 +136,7 @@ typedef struct {
     size_t index; // index of next opcode
 } Label;
 
+// TODO: Make `Labels` a hashmap or set
 typedef struct {
     Label *data;
     size_t size;

@@ -306,8 +306,6 @@ int find_label(Labels *labels, StringView name) {
     return -1;
 }
 
-// TODO: Duplicate labels cause only the last one to be valid.
-// Make `Labels` a hashmap or set instead or check for duplicate labels.
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     JumpIndexes saved_jumps = {0};
     int op_index = 0;
@@ -328,6 +326,11 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                         dyn_remove(&saved_jumps, i, size_t);
                         i--;
                     }
+                }
+                if (find_label(labels, label.name) >= 0) {
+                    fprintf(stderr, "bass:%d:%zu: error: label `%.*s` declared multiple times\n",
+                            tok.line, tok.col, SV_FORMAT(tok.str));
+                    return false;
                 }
                 dyn_append(labels, label);
             } break;
