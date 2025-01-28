@@ -43,43 +43,27 @@ bool get_opcode(StringView string, OpType *type) {
 }
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
+    // skip the `#` before numeric literals
     int skip = parser->end - parser->start;
-    // TODO: maybe remove skip as it's always 1
-    assert(skip == 1);
 
-    // allow negative integers
-    if (peek(parser) == '-') {
+    while (!isspace(peek(parser)) && peek(parser) != '\0') {
         next(parser);
-    } else if (!isdigit(peek(parser))) {
-        fprintf(stderr, "bass:%d:%zu: unexpected character: `%c`\n",
-                parser->line, get_col(parser), peek(parser));
-        return false;
-    }
-
-    while (isalnum(peek(parser))) {
-        next(parser);
-    }
-
-    if (!(isspace(peek(parser)) || peek(parser) == '\0')) {
-        fprintf(stderr, "bass:%d:%zu: unexpected character `%c`\n",
-                parser->line, get_col(parser), peek(parser));
-        return false;
     }
 
     *string = get_string(parser);
-    if (string->length <= 1) {
-        fprintf(stderr, "bass:%d:%zu: expected number, got `%.*s`\n",
-                parser->line, get_col_start(parser), SV_FORMAT(*string));
+    if (string->length == 1) {
+        fprintf(stderr, "bass:%d:%zu: expected number, got `%c`\n",
+                parser->line, get_col_start(parser) + skip, peek(parser));
         return false;
     }
 
     const char *start = &parser->source.data[parser->start + skip];
     char *endptr;
     *num = strtol(start, &endptr, 0);
-    // TODO: print the error from string.data + skip
     if (endptr != &string->data[string->length]) {
         fprintf(stderr, "bass:%d:%zu: expected number, got `%.*s`\n",
-                parser->line, get_col_start(parser), SV_FORMAT(*string));
+                parser->line, get_col_start(parser) + skip,
+                SV_FORMAT(get_slice(parser, parser->start+1, parser->end)));
         return false;
     }
     return true;
@@ -110,11 +94,10 @@ bool parse_quoted_char(Parser *parser, StringView *string, char quote,
 }
 
 
-bool parse_register(Parser *parser, StringView *string, long *reg_num) {
-    *string = parse_identifier(parser);
-    if (string->length != 2) return false;
-    if (string->data[0] != 'r') return false;
-    *reg_num = string->data[1] - '0';
+bool parse_register(StringView string, long *reg_num) {
+    if (string.length != 2) return false;
+    if (string.data[0] != 'r') return false;
+    *reg_num = string.data[1] - '0';
     if (*reg_num < 0 || *reg_num >= REG_COUNT) {
         return false;
     }
@@ -133,9 +116,10 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
         if (start <= operand.type && operand.type <= end) { 
             operands[i] = operand;
         } else {
-            fprintf(stderr, "bass:%d:%zu: error: unexpected %s, `%.*s`, after opcode `%s`\n",
-                    operand.line, operand.col, TOKEN_STRING[operand.type], 
-                    SV_FORMAT(operand.str), OPCODES[op_type].name);
+            fprintf(stderr, "bass:%d:%zu: error: unexpected %s", operand.line, operand.col, TOKEN_STRING[operand.type]);
+            if (operand.type != TOK_EOF) fprintf(stderr, ", `%.*s`,", SV_FORMAT(operand.str));
+            fprintf(stderr, " after opcode `%s`\n", OPCODES[op_type].name);
+
             fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
                     OPCODES[op_type].name, OPCODES[op_type].arity);
             return false;
@@ -249,7 +233,13 @@ bool next_token(Parser *parser, Token *token) {
                 // resetting parser to prevent `@` being picked up in parse_identifier
                 parser->start = parser->end;
                 // parsing as address at register
-                if (!parse_register(parser, &string, &num)) {
+                string = parse_identifier(parser);
+                if (!isspace(peek(parser)) && peek(parser) != '\0') {
+                    fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
+                            parser->line, get_col_start(parser), peek(parser));
+                    return false;
+                }
+                if (!parse_register(string, &num)) {
                     fprintf(stderr, "bass:%d:%zu: error: expected register or number after `@` got `%c`\n",
                             parser->line, get_col_start(parser),
                             (string.length > 0)? string.data[0]: peek(parser));
@@ -261,7 +251,13 @@ bool next_token(Parser *parser, Token *token) {
 
         default: {
             if (isalpha(current)) {
-                if (parse_register(parser, &string, &num)) {
+                string = parse_identifier(parser);
+                if (!isspace(peek(parser)) && peek(parser) != '\0') {
+                    fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
+                            parser->line, get_col_start(parser), peek(parser));
+                    return false;
+                }
+                if (parse_register(string, &num)) {
                     *token = MAKE_TOKEN(parser, TOK_REGISTER, string, num);
                 } else {
                     if (peek(parser) == ':') {
@@ -279,7 +275,7 @@ bool next_token(Parser *parser, Token *token) {
             } else if (current == '\0') {
                 *token = MAKE_TOKEN(parser, TOK_EOF, (StringView){0}, -1);
             } else {
-                fprintf(stderr, "bass:%d:%zu unexpected character `%c`\n",
+                fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
                         parser->line, get_col_start(parser), current);
 
                 if (isdigit(current)) {
