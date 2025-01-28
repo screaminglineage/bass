@@ -85,7 +85,6 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     return true;
 }
 
-
 static inline StringView parse_identifier(Parser *parser) {
     while (isalnum(peek(parser)) || peek(parser) == '_') {
         next(parser);
@@ -111,13 +110,14 @@ bool parse_quoted_char(Parser *parser, StringView *string, char quote,
 }
 
 
-bool parse_register_from_identifier(StringView identifier, long *num) {
-    if (identifier.length != 2) return false;
-    if (identifier.data[0] != 'r') return false;
-    if (!('0' <= identifier.data[1] && identifier.data[1] < REG_COUNT + '0')) {
+bool parse_register(Parser *parser, StringView *string, long *reg_num) {
+    *string = parse_identifier(parser);
+    if (string->length != 2) return false;
+    if (string->data[0] != 'r') return false;
+    *reg_num = string->data[1] - '0';
+    if (*reg_num < 0 || *reg_num >= REG_COUNT) {
         return false;
     }
-    *num = identifier.data[1] - '0';
     return true;
 }
 
@@ -238,37 +238,32 @@ bool next_token(Parser *parser, Token *token) {
                 }
                 *token = MAKE_TOKEN(parser, TOK_ADDRESS, string, num);
 
+            } else if (peek(parser) == '\n') {
+                fprintf(
+                    stderr,
+                    "bass:%d:%zu: error: expected register or number after `@` got `\\n`\n",
+                    parser->line, get_col_start(parser) + 2);
+                return false;
+
+            } else {
+                // resetting parser to prevent `@` being picked up in parse_identifier
+                parser->start = parser->end;
                 // parsing as address at register
-            } else if (peek(parser) == 'r') {
-                next(parser);
-                StringView identifier = parse_identifier(parser);
-                if (!parse_register_from_identifier((StringView){identifier.data+1, identifier.length - 1} , &num)) {
+                if (!parse_register(parser, &string, &num)) {
+                    fprintf(stderr, "bass:%d:%zu: error: expected register or number after `@` got `%c`\n",
+                            parser->line, get_col_start(parser),
+                            (string.length > 0)? string.data[0]: peek(parser));
                     return false;
                 }
-                *token = MAKE_TOKEN(parser, TOK_ADDRESS_REG, identifier, num);
-            } else {
-                if (peek(parser) == '\n') {
-                    fprintf(
-                        stderr,
-                        "bass:%d:%zu: expected register or value after `@` got `\\n`\n",
-                        parser->line, get_col_start(parser) + 2);
-                } else {
-                    fprintf(
-                        stderr,
-                        "bass:%d:%zu: expected register or value after `@` got `%c`\n",
-                        parser->line, get_col_start(parser) + 2, peek(parser));
-                }
-                return false;
+                *token = MAKE_TOKEN(parser, TOK_ADDRESS_REG, ((StringView){string.data-1, string.length+1}), num);
             }
         } break;
 
         default: {
             if (isalpha(current)) {
-                StringView identifier = parse_identifier(parser);
-                if (parse_register_from_identifier(identifier, &num)) {
-                    *token = MAKE_TOKEN(parser, TOK_REGISTER, identifier, num);
+                if (parse_register(parser, &string, &num)) {
+                    *token = MAKE_TOKEN(parser, TOK_REGISTER, string, num);
                 } else {
-                    string = identifier;
                     if (peek(parser) == ':') {
                         next(parser);
                         *token = MAKE_TOKEN(parser, TOK_LABEL, string, -1);
@@ -309,7 +304,6 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
         if (!next_token(parser, &tok)) {
             return false;
         }
-        // printf("%d:%zu: %s `%.*s`\n", tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
 
         switch (tok.type) {
             case TOK_LABEL: {
