@@ -44,6 +44,8 @@ bool get_opcode(StringView string, OpType *type) {
 
 bool parse_num(Parser *parser, long *num, StringView *string) {
     int skip = parser->end - parser->start;
+    // TODO: maybe remove skip as it's always 1
+    assert(skip == 1);
 
     // allow negative integers
     if (peek(parser) == '-') {
@@ -66,15 +68,23 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
 
     *string = get_string(parser);
     if (string->length <= 1) {
-        fprintf(stderr, "bass:%d:%zu: expected number\n", parser->line,
-                parser->start);
+        fprintf(stderr, "bass:%d:%zu: expected number, got `%.*s`\n",
+                parser->line, get_col_start(parser), SV_FORMAT(*string));
         return false;
     }
 
-    // TODO: strtol: check for errors
-    *num = strtol(&parser->source.data[parser->start + skip], NULL, 0);
+    const char *start = &parser->source.data[parser->start + skip];
+    char *endptr;
+    *num = strtol(start, &endptr, 0);
+    // TODO: print the error from string.data + skip
+    if (endptr != &string->data[string->length]) {
+        fprintf(stderr, "bass:%d:%zu: expected number, got `%.*s`\n",
+                parser->line, get_col_start(parser), SV_FORMAT(*string));
+        return false;
+    }
     return true;
 }
+
 
 static inline StringView parse_identifier(Parser *parser) {
     while (isalnum(peek(parser)) || peek(parser) == '_') {
@@ -110,7 +120,6 @@ bool parse_register_from_identifier(StringView identifier, long *num) {
     *num = identifier.data[1] - '0';
     return true;
 }
-
 
 bool next_token(Parser *parser, Token *token);
 
