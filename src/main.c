@@ -8,6 +8,7 @@
 
 bool parse_and_interpret(const char *source_file, bool debug) {
     StringView sv;
+    // TODO: free the string at the end
     if (!read_to_string(source_file, &sv)) {
         return false;
     }

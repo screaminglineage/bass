@@ -4,7 +4,7 @@
 #include "constants.h"
 #include "utils.h"
 
-// TODO: rename Parser to Lexer
+// TODO: add filename to parser for reporting errors
 typedef struct {
     StringView source;
     size_t start;
@@ -13,8 +13,6 @@ typedef struct {
     int line;
 } Parser;
 
-
-// TODO: add a token type for EOF
 
 // order of elements matters in this enum
 typedef enum {
@@ -77,6 +75,8 @@ typedef enum {
     OP_COUNT
 } OpType;
 
+// TODO: put line and col in a separate 
+// Location struct along with the filename
 typedef struct {
     int line;
     size_t col;
@@ -117,14 +117,7 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_RETURN] = {.name = "return", .arity = 0}};
 
 
-// TODO: redefine these as containing a Token
-
-typedef struct {
-    TokenType type;
-    StringView string;
-    int value;
-} Operand;
-
+typedef Token Operand;
 typedef struct {
     int line;
     size_t col;

@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,15 +11,15 @@
 static inline int eval_int(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_LITERAL_NUM:
-        return operand.value;
+        return operand.as_int;
     case TOK_REGISTER:
-        return state->registers[operand.value];
+        return state->registers[operand.as_int];
     case TOK_ADDRESS:
-        return *(int *)(&state->memory[operand.value]);
+        return *(int *)(&state->memory[operand.as_int]);
     case TOK_ADDRESS_REG:
-        return *(int *)(&state->memory[state->registers[operand.value]]);
+        return *(int *)(&state->memory[state->registers[operand.as_int]]);
     default:
-        assert(false && "Passed in value was not an integer!");
+        UNREACHABLE_INFO("Passed in value was not an integer!");
     }
 }
 
@@ -30,13 +29,13 @@ static inline bool set_lval(State *state, OpCode *op, int rval) {
 
     switch (lval.type) {
     case TOK_REGISTER:
-        state->registers[lval.value] = rval;
+        state->registers[lval.as_int] = rval;
         return true;
     case TOK_ADDRESS:
-        *(int *)(&state->memory[lval.value]) = rval;
+        *(int *)(&state->memory[lval.as_int]) = rval;
         return true;
     case TOK_ADDRESS_REG:
-        *(int *)(&state->memory[state->registers[lval.value]]) = rval;
+        *(int *)(&state->memory[state->registers[lval.as_int]]) = rval;
         return true;
     default: {
         fprintf(
@@ -46,7 +45,7 @@ static inline bool set_lval(State *state, OpCode *op, int rval) {
             "help: an rvalue was expected but an lvalue was found, check if "
             "you put a `#` instead of a `r` or `@`\n",
             OPCODES[op->op].name, TOKEN_STRING[lval.type],
-            SV_FORMAT(lval.string), op->line, op->col);
+            SV_FORMAT(lval.str), op->line, op->col);
         return false;
     }
     }
@@ -55,7 +54,7 @@ static inline bool set_lval(State *state, OpCode *op, int rval) {
 // // TODO: wtf is this shit
 // // need this function to make compiler happy
 static inline int unreachable() {
-    assert(false && "Unreachable");
+    UNREACHABLE();
     return 0;
 }
 
@@ -73,7 +72,7 @@ bool calculate_and_set(State *state, OpCode *opcode) {
     OpType op = opcode->op;
 
     if ((op == OP_DIV || op == OP_MOD) && second == 0) {
-        fprintf(stderr, "bass:%d:%zu: division by 0 at opcode `%s`\n",
+        fprintf(stderr, "bass:%d:%zu: error: division by 0 at opcode `%s`\n",
                 opcode->line, opcode->col, OPCODES[op].name);
         return false;
     }
@@ -86,10 +85,10 @@ bool calculate_and_set(State *state, OpCode *opcode) {
 static inline void execute_print(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_LITERAL_CHAR:
-        printf("%c", operand.value);
+        printf("%c", operand.as_int);
         break;
     case TOK_LITERAL_STR:
-        printf("%.*s", SV_FORMAT(operand.string));
+        printf("%.*s", SV_FORMAT(operand.str));
         break;
     default:
         printf("%d", eval_int(state, operand));
@@ -98,7 +97,7 @@ static inline void execute_print(State *state, Operand operand) {
 
 static inline int eval_jump(State *state, OpCode *opcode) {
     return (opcode->operands[0].type == TOK_IDENTIFIER)
-               ? opcode->operands[0].value
+               ? opcode->operands[0].as_int
                : eval_int(state, opcode->operands[0]);
 }
 
@@ -128,7 +127,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
     } break;
     case OP_STORE: {
         int index = eval_int(state, opcode->operands[0]);
-        *(int *)(&state->memory[index]) = opcode->operands[1].value;
+        *(int *)(&state->memory[index]) = opcode->operands[1].as_int;
     } break;
     case OP_CMP: {
         int first = eval_int(state, opcode->operands[0]);
@@ -184,7 +183,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
     case OP_NO:
         break;
     default:
-        assert(false && "Unreachable");
+        UNREACHABLE();
     }
     return true;
 }

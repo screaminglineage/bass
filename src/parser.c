@@ -123,7 +123,7 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
             return false;
         }
         if (start <= operand.type && operand.type <= end) { 
-            operands[i] = (Operand){operand.type, operand.str, operand.as_int};
+            operands[i] = operand;
         } else {
             fprintf(stderr, "bass:%d:%zu: error: unexpected %s, `%.*s`, after opcode `%s`\n",
                     operand.line, operand.col, TOKEN_STRING[operand.type], 
@@ -341,9 +341,9 @@ void patch_labels(OpCodes *opcodes, Labels labels) {
             if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
                 opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
                 opcode.op == OP_CALL) {
-                StringView opcode_label = opcode.operands[0].string;
+                StringView opcode_label = opcode.operands[0].str;
                 if (string_view_eq(opcode_label, label_name)) {
-                    opcodes->data[j].operands[0].value = labels.data[i].index;
+                    opcodes->data[j].operands[0].as_int = labels.data[i].index;
                 }
             }
         }
@@ -356,7 +356,7 @@ void display_opcodes(OpCodes ops) {
         OpCode op = ops.data[i];
         printf("OpCode: %s\n", OPCODES[op.op].name);
         for (int i = 0; i < OPCODES[op.op].arity; i++) {
-            int val = op.operands[i].value;
+            int val = op.operands[i].as_int;
             switch (op.operands[i].type) {
             case TOK_REGISTER:
                 printf("\tREGISTER: %d\n", val);
@@ -368,7 +368,7 @@ void display_opcodes(OpCodes ops) {
                 printf("\tVALUE: %c\n", val);
                 break;
             case TOK_LITERAL_STR:
-                printf("\tVALUE: %.*s\n", SV_FORMAT(op.operands[0].string));
+                printf("\tVALUE: %.*s\n", SV_FORMAT(op.operands[0].str));
                 break;
             case TOK_ADDRESS:
                 printf("\tADDRESS: %d\n", val);
@@ -377,7 +377,7 @@ void display_opcodes(OpCodes ops) {
                 printf("\tADDRESS AT REGISTER: %d\n", val);
                 break;
             case TOK_IDENTIFIER: {
-                StringView str = op.operands[i].string;
+                StringView str = op.operands[i].str;
                 printf("\tLABEL: %.*s (to opcode: %d)\n", SV_FORMAT(str), val);
             } break;
             case TOK_LABEL:
