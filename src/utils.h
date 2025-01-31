@@ -55,7 +55,8 @@ static inline bool string_view_cstring_eq(StringView a, const char *b) {
 
 static inline char *string_view_to_cstring(StringView sv) {
     // TODO: this is never freed
-    char *str =  malloc(sizeof(char)*(sv.length + 1));
+    char *str = malloc(sizeof(char)*(sv.length + 1));
+    assert(str && "failed to allocate enough memory");
     memcpy(str, sv.data, sv.length);
     str[sv.length] = 0;
     return str;

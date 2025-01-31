@@ -136,7 +136,6 @@ typedef struct {
     size_t index; // index of next opcode
 } Label;
 
-// TODO: Make `Labels` a hashmap or set
 typedef struct {
     Label *data;
     size_t size;
@@ -152,8 +151,7 @@ typedef struct {
 #define get_slice(parser, start, end) \
     (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
-#define get_col(parser) ((parser)->end - (parser)->line_start)
-#define get_col_start(parser) ((parser)->start - (parser)->line_start + 1)
+#define get_col(parser) ((parser)->start - (parser)->line_start + 1)
 
 static inline void parser_init(Parser *parser, StringView source_code) {
     parser->source = source_code;

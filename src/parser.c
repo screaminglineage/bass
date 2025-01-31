@@ -53,7 +53,7 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     *string = get_string(parser);
     if (string->length == 1) {
         fprintf(stderr, "bass:%d:%zu: expected number, got `%c`\n",
-                parser->line, get_col_start(parser) + skip, peek(parser));
+                parser->line, get_col(parser) + skip, peek(parser));
         return false;
     }
 
@@ -62,7 +62,7 @@ bool parse_num(Parser *parser, long *num, StringView *string) {
     *num = strtol(start, &endptr, 0);
     if (endptr != &string->data[string->length]) {
         fprintf(stderr, "bass:%d:%zu: expected number, got `%.*s`\n",
-                parser->line, get_col_start(parser) + skip,
+                parser->line, get_col(parser) + skip,
                 SV_FORMAT(get_slice(parser, parser->start+1, parser->end)));
         return false;
     }
@@ -85,7 +85,7 @@ bool parse_quoted_char(Parser *parser, StringView *string, char quote,
     }
     if (peek(parser) != quote) {
         fprintf(stderr, "bass:%d:%zu: unterminated %s literal\n",
-                parser->line, get_col_start(parser), type);
+                parser->line, get_col(parser), type);
         return false;
     }
     *string = get_slice(parser, parser->start + 1, parser->end);
@@ -150,7 +150,7 @@ bool parse_opcode(Parser *parser, Token opcode_token, OpCode *opcode) {
 }
 
 #define MAKE_TOKEN(parser, type, string, value) \
-    ((Token){(parser)->line, get_col_start((parser)), (type), (string), {(value)}})
+    ((Token){(parser)->line, get_col((parser)), (type), (string), {(value)}})
 
 
 
@@ -190,7 +190,7 @@ bool next_token(Parser *parser, Token *token) {
             }
             if (string.length == 0) {
                 fprintf(stderr, "bass:%d:%zu: empty character literal\n", 
-                        parser->line, get_col_start(parser));
+                        parser->line, get_col(parser));
                 return false;
             }
 
@@ -202,7 +202,7 @@ bool next_token(Parser *parser, Token *token) {
                 // regular character
                 if (string.length > 1) {
                     fprintf(stderr, "bass:%d:%zu character literal: `%.*s` is too long\n",
-                            parser->line, get_col_start(parser), SV_FORMAT(string));
+                            parser->line, get_col(parser), SV_FORMAT(string));
                     return false;
                 }
                 *token = MAKE_TOKEN(parser, TOK_LITERAL_CHAR, string, string.data[0]);
@@ -226,7 +226,7 @@ bool next_token(Parser *parser, Token *token) {
                 fprintf(
                     stderr,
                     "bass:%d:%zu: error: expected register or number after `@` got `\\n`\n",
-                    parser->line, get_col_start(parser) + 2);
+                    parser->line, get_col(parser) + 2);
                 return false;
 
             } else {
@@ -236,12 +236,12 @@ bool next_token(Parser *parser, Token *token) {
                 string = parse_identifier(parser);
                 if (!isspace(peek(parser)) && peek(parser) != '\0') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
-                            parser->line, get_col_start(parser), peek(parser));
+                            parser->line, get_col(parser), peek(parser));
                     return false;
                 }
                 if (!parse_register(string, &num)) {
                     fprintf(stderr, "bass:%d:%zu: error: expected register or number after `@` got `%c`\n",
-                            parser->line, get_col_start(parser),
+                            parser->line, get_col(parser),
                             (string.length > 0)? string.data[0]: peek(parser));
                     return false;
                 }
@@ -254,7 +254,7 @@ bool next_token(Parser *parser, Token *token) {
                 string = parse_identifier(parser);
                 if (!isspace(peek(parser)) && peek(parser) != '\0' && peek(parser) != ':') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
-                            parser->line, get_col_start(parser), peek(parser));
+                            parser->line, get_col(parser), peek(parser));
                     return false;
                 }
                 if (parse_register(string, &num)) {
@@ -276,7 +276,7 @@ bool next_token(Parser *parser, Token *token) {
                 *token = MAKE_TOKEN(parser, TOK_EOF, (StringView){0}, -1);
             } else {
                 fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
-                        parser->line, get_col_start(parser), current);
+                        parser->line, get_col(parser), current);
 
                 if (isdigit(current)) {
                     fprintf(
@@ -299,6 +299,8 @@ typedef struct {
     size_t capacity;
 } JumpIndexes;
 
+
+// TODO: add searching label by hashing the name
 int find_label(Labels *labels, StringView name) {
     for (size_t i = 0; i < labels->size; i++) {
         if (string_view_eq(labels->data[i].name, name)) return i;

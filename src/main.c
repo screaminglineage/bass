@@ -8,7 +8,6 @@
 
 bool parse_and_interpret(const char *source_file, bool debug) {
     StringView sv;
-    // TODO: free the string at the end
     if (!read_to_string(source_file, &sv)) {
         return false;
     }
@@ -18,9 +17,9 @@ bool parse_and_interpret(const char *source_file, bool debug) {
     OpCodes opcodes = {0};
     Labels labels = {0};
     if (!parse(&p, &opcodes, &labels)) {
+        free((void *)sv.data);
         return false;
     }
-    // patch_labels(&opcodes, labels);
 
     if (debug) {
         printf("Opcodes:\n");
@@ -32,11 +31,16 @@ bool parse_and_interpret(const char *source_file, bool debug) {
     State state;
     if (!state_init(&state)) {
         printf("bass: failed to allocate enough memory, exiting\n");
+        free((void *)sv.data);
         return false;
     }
     if (!interpret(&state, opcodes)) {
+        free((void *)sv.data);
+        free(state.memory);
         return false;
     }
+    free((void *)sv.data);
+    free(state.memory);
     return true;
 }
 
