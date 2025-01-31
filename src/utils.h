@@ -26,12 +26,12 @@ do {                                                                        \
     (da)->size--;                                                           \
 } while (0)
 
-#define TODO(str) (printf("TODO: %s\n", str), abort())
-#define UNREACHABLE_INFO(str) (printf("UNREACHABLE: %s\n", str), abort())
-#define UNREACHABLE() (printf("UNREACHABLE"), abort())
+#define TODO(str) (printf("%s:%d: TODO: %s\n", __FILE__, __LINE__, str), abort())
+#define UNREACHABLE_INFO(str) (printf("%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, str), abort())
+#define UNREACHABLE() (printf("%s:%d: UNREACHABLE\n", __FILE__, __LINE__), abort())
 
-// MODULO that actually wraps-around to b if result is negative
-#define MODULO(a, b) (((a) % (b)) + (b)) % (b);
+// MODULO that actually wraps-around to b - 1 if result is negative
+#define MODULO(a, b) ((a) - (b) * ((a) / (b)))
 
 typedef struct {
     const char *data;

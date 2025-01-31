@@ -51,37 +51,6 @@ static inline bool set_lval(State *state, OpCode *op, int rval) {
     }
 }
 
-// // TODO: wtf is this shit
-// // need this function to make compiler happy
-static inline int unreachable() {
-    UNREACHABLE();
-    return 0;
-}
-
-#define CALCULATE(op, a, b)                                                    \
-    ((op) == OP_ADD)   ? a + b                                                 \
-    : ((op) == OP_SUB) ? a - b                                                 \
-    : ((op) == OP_MUL) ? a *b                                                  \
-    : ((op) == OP_DIV) ? a / b                                                 \
-    : ((op) == OP_MUL) ? a % b                                                 \
-                       : unreachable()
-
-bool calculate_and_set(State *state, OpCode *opcode) {
-    int first = eval_int(state, opcode->operands[1]);
-    int second = eval_int(state, opcode->operands[2]);
-    OpType op = opcode->op;
-
-    if ((op == OP_DIV || op == OP_MOD) && second == 0) {
-        fprintf(stderr, "bass:%d:%zu: error: division by 0 at opcode `%s`\n",
-                opcode->line, opcode->col, OPCODES[op].name);
-        return false;
-    }
-    if (!set_lval(state, opcode, CALCULATE(op, first, second))) {
-        return false;
-    }
-    return true;
-}
-
 static inline void execute_print(State *state, Operand operand) {
     switch (operand.type) {
     case TOK_LITERAL_CHAR:
@@ -103,12 +72,46 @@ static inline int eval_jump(State *state, OpCode *opcode) {
 
 bool execute_opcode(State *state, OpCode *opcode) {
     switch (opcode->op) {
-    case OP_ADD:
-    case OP_SUB:
-    case OP_DIV:
-    case OP_MUL:
+    case OP_ADD: {
+        if (!set_lval(state, opcode,
+                eval_int(state, opcode->operands[1])
+                + eval_int(state, opcode->operands[2]))) {
+            return false;
+        }
+    } break;
+    case OP_SUB: {
+        if (!set_lval(state, opcode, 
+                eval_int(state, opcode->operands[1])
+                - eval_int(state, opcode->operands[2]))) {
+            return false;
+        }
+    } break;
+    case OP_MUL: {
+        if (!set_lval(state, opcode, 
+                eval_int(state, opcode->operands[1])
+                * eval_int(state, opcode->operands[2]))) {
+            return false;
+        }
+    } break;
+    case OP_DIV: {
+        int n = eval_int(state, opcode->operands[2]);
+        if (n == 0) {
+            fprintf(stderr, "bass:%d:%zu: error: division by 0 at opcode `%s`\n",
+                    opcode->line, opcode->col, OPCODES[opcode->op].name);
+            return false;
+        }
+        if (!set_lval(state, opcode, eval_int(state, opcode->operands[1]) / n)) {
+            return false;
+        }
+    } break;
     case OP_MOD: {
-        if (!(calculate_and_set(state, opcode))) {
+        int n = eval_int(state, opcode->operands[2]);
+        if (n == 0) {
+            fprintf(stderr, "bass:%d:%zu: error: division by 0 at opcode `%s`\n",
+                    opcode->line, opcode->col, OPCODES[opcode->op].name);
+            return false;
+        }
+        if (!set_lval(state, opcode, eval_int(state, opcode->operands[1]) % n)) {
             return false;
         }
     } break;
