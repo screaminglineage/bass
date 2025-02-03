@@ -11,7 +11,5 @@ loop:
     move r2 r3
 
     cmp r0 #15
-    jumpz end
-    jump loop
-end:
+    jumpl loop
 

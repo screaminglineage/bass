@@ -81,7 +81,7 @@ set0:
 
 ; Resetting r0 and r7 and also saving them
 ; Modifies r0, r1, r7, r4, r3
-end: 
+end:
     pop r0
     pop r1
     push r0
@@ -114,7 +114,7 @@ start:
     move r0 #4
     move r7 #48
     jump mainloop
-    
+
 main:
     pop r7
     pop r0
@@ -129,6 +129,6 @@ next:
     add r6 r6 #1
     jump main
 
-over: 
+over:
     print '\n'
 

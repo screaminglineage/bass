@@ -40,9 +40,7 @@ loop:
     move r2 r3
 
     cmp r0 #10
-    jumpz end    ; jump if zero (only jumps when last cmp result was 0)
-    jump loop
-end:
+    jumpl loop      ; jump if lesser (only jumps when last cmp result was lesser)
 ```
 
 ## Bas(s)ics
