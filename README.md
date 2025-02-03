@@ -174,12 +174,11 @@ end:
 ```
 
 ```asm
-jump main
 hello:
     println "Hello World"
     return
 
-main:
+_:
     call hello
 ```
 

@@ -1,7 +1,5 @@
 ; Using `call` and `return` for basic function calling
 
-jump main
-
 func2:
   println "inside func2"
   return
@@ -11,7 +9,7 @@ func:
   call func2
   return
 
-main:
+_:
   println "before"
   call func
   println "after"
