@@ -198,13 +198,12 @@ bool next_token(Parser *parser, Token *token) {
             if (string.data[0] == '\\' && string.length == 2 &&
                 string.data[1] == 'n') {
                 *token = MAKE_TOKEN(parser, TOK_LITERAL_CHAR, string, '\n');
-            } else {
-                // regular character
-                if (string.length > 1) {
+            } else if (string.length > 1){
                     fprintf(stderr, "bass:%d:%zu character literal: `%.*s` is too long\n",
                             parser->line, get_col(parser), SV_FORMAT(string));
                     return false;
-                }
+            } else {
+                // regular character
                 *token = MAKE_TOKEN(parser, TOK_LITERAL_CHAR, string, string.data[0]);
             }
         } break;
@@ -342,9 +341,9 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                     return false;
                 }
                 // patching jumps
-                if (opcode.op == OP_JUMP || opcode.op == OP_JUMPZ ||
-                    opcode.op == OP_JUMPG || opcode.op == OP_JUMPL ||
-                    opcode.op == OP_CALL) {
+                if ((opcode.op == OP_JUMP || opcode.op == OP_JUMPZ || opcode.op == OP_JUMPG
+                    || opcode.op == OP_JUMPL || opcode.op == OP_CALL)
+                    && opcode.operands[0].type == TOK_IDENTIFIER) {
                     int label_index = find_label(labels, opcode.operands[0].str);
                     if (label_index >= 0) {
                         opcode.operands[0].as_int = labels->data[label_index].index;
