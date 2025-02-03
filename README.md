@@ -22,7 +22,7 @@ move r0 #25
 move r1 #0x10
 add r2 r0 r1
 mul r3 r2 #9
-print r3
+println r3
 ```
 
 A more complicated program that prints the Fibonacci series.
@@ -52,17 +52,19 @@ loop:
     ...
 ```
 
-Each operand to an opcode can be an immediate value (only integers are supported for now), a register, or a memory address. Immediate values are prefixed with a `#`, registers with an `r` and memory addresses with an `@`.
+Each operand to an opcode can be an immediate value (only integers are supported for now), a register, or a memory address. Immediate values are prefixed with a `#`, registers with an `r` and memory addresses with an `@`. All whitespace/indentation is ignored and is optional.
 
 Character literals (delimited by `'`) and string literals (delimited by `"`) can only be used in `print` and `println` opcodes. String literals can span multiple lines as well. Character literals only support the escape character `\n` for now.
 
-Bare identifiers can only be used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. All whitespace/indentation is ignored and is optional.
+Bare identifiers can only be used in the jump instructions to signify the target label. Also note that labels are followed by a `:`. `_` is a special label that can be used to mark the entry point. This is useful to start execution from a different location. If no entry point is provided then the execution begins from the start of the file.
 
 ```asm
-loop:                    ; marks position as `loop`
-    ; ...
-    jump loop            ; jumps to the opcode next to the label `loop`
+; Only prints `bar` since the entry point is specified
+println "foo"
+_:
+  println "bar"
 ```
+Note that `_` can only be jumped to if it was explicitly declared.
 
 The special syntax `@r[0-7]` can be used as a shortcut for indirect addressing.
 

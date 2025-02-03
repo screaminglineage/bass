@@ -152,8 +152,6 @@ bool parse_opcode(Parser *parser, Token opcode_token, OpCode *opcode) {
 #define MAKE_TOKEN(parser, type, string, value) \
     ((Token){(parser)->line, get_col((parser)), (type), (string), {(value)}})
 
-
-
 // TODO: the function assigns a value of long to an int (num is long, Token has int member variable)
 bool next_token(Parser *parser, Token *token) {
     char current = 0;
@@ -278,11 +276,8 @@ bool next_token(Parser *parser, Token *token) {
                         parser->line, get_col(parser), current);
 
                 if (isdigit(current)) {
-                    fprintf(
-                        stderr,
-                        "help: try prefixing `%c` with `r` for register, `#` "
-                        "for a literal value or `@` for a memory address\n",
-                        current);
+                    fprintf(stderr, "help: try prefixing `%c` with `r` for register, `#` "
+                                    "for a literal value or `@` for a memory address\n", current);
                 }
                 return false;
             }
@@ -368,6 +363,8 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             default: {
                 fprintf(stderr, "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
                         tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
+                fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
+                        OPCODES[opcodes->data[opcodes->size-1].op].name, OPCODES[opcodes->data[opcodes->size-1].op].arity);
                 return false;
             } break;
         }

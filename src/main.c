@@ -14,11 +14,17 @@ bool parse_and_interpret(const char *source_file, bool debug) {
 
     Parser p;
     parser_init(&p, sv);
+    // TODO: leaking opcodes and labels
     OpCodes opcodes = {0};
     Labels labels = {0};
     if (!parse(&p, &opcodes, &labels)) {
         free((void *)sv.data);
         return false;
+    }
+    size_t entry = 0;
+    int i = find_label(&labels, (StringView){"_", 1});
+    if (i >= 0) {
+        entry = labels.data[i].index;
     }
 
     if (debug) {
@@ -34,6 +40,8 @@ bool parse_and_interpret(const char *source_file, bool debug) {
         free((void *)sv.data);
         return false;
     }
+    state.reg_pc = entry;
+
     if (!interpret(&state, opcodes)) {
         free((void *)sv.data);
         free(state.memory);
