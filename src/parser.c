@@ -250,7 +250,7 @@ bool next_token(Parser *parser, Token *token) {
         } break;
 
         default: {
-            if (isalpha(current)) {
+            if (isalpha(current) || current == '_') {
                 string = parse_identifier(parser);
                 if (!isspace(peek(parser)) && peek(parser) != '\0' && peek(parser) != ':') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
@@ -355,16 +355,24 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                 dyn_append(opcodes, opcode);
                 op_index++;
             } break;
-            case TOK_EOF: return true;
+            case TOK_EOF: {
+                if (saved_jumps.size != 0) {
+                    for (size_t i = 0; i < saved_jumps.size; i++) {
+                        Operand label_name = opcodes->data[saved_jumps.data[i]].operands[0];
+                        fprintf(stderr, "bass:%d:%zu: error: jump to an undeclared label, `%.*s`\n",
+                                label_name.line, label_name.col, SV_FORMAT(label_name.str));
+                    }
+                    return false;
+                }
+                return true;
+            } break;
             default: {
-                fprintf(stderr,
-                        "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
+                fprintf(stderr, "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
                         tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
                 return false;
             } break;
         }
     }
-    assert(saved_jumps.size == 0 && "Saved jumps should be empty at this point");
 }
 
 
