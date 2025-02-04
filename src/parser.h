@@ -163,7 +163,7 @@ static inline void parser_init(Parser *parser, StringView source_code) {
 
 bool parse(Parser *parser, OpCodes *opcodes, Labels *labels);
 void patch_labels(OpCodes *opcodes, Labels labels);
-void display_opcodes(OpCodes ops);
+void display_opcode(OpCode op);
 void display_labels(Labels ops);
 int find_label(Labels *labels, StringView name);
 

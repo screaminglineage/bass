@@ -372,14 +372,11 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
     }
 }
 
-
-void display_opcodes(OpCodes ops) {
-    for (size_t i = 0; i < ops.size; i++) {
-        OpCode op = ops.data[i];
-        printf("OpCode: %s\n", OPCODES[op.op].name);
-        for (int i = 0; i < OPCODES[op.op].arity; i++) {
-            int val = op.operands[i].as_int;
-            switch (op.operands[i].type) {
+void display_opcode(OpCode op) {
+    printf("OpCode: %s\n", OPCODES[op.op].name);
+    for (int i = 0; i < OPCODES[op.op].arity; i++) {
+        int val = op.operands[i].as_int;
+        switch (op.operands[i].type) {
             case TOK_REGISTER:
                 printf("\tREGISTER: %d\n", val);
                 break;
@@ -387,7 +384,7 @@ void display_opcodes(OpCodes ops) {
                 printf("\tVALUE: %d\n", val);
                 break;
             case TOK_LITERAL_CHAR:
-                printf("\tVALUE: %c\n", val);
+                (val == '\n')? printf("\tVALUE: \\n\n"): printf("\tVALUE: %c\n", val);
                 break;
             case TOK_LITERAL_STR:
                 printf("\tVALUE: %.*s\n", SV_FORMAT(op.operands[0].str));
@@ -407,10 +404,10 @@ void display_opcodes(OpCodes ops) {
             case TOK_EOF:
             case TOK_COUNT:
                 UNREACHABLE_INFO("Incorrect type as operand");
-            }
         }
     }
 }
+
 
 void display_labels(Labels lbls) {
     for (size_t i = 0; i < lbls.size; i++) {
