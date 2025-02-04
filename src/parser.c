@@ -315,12 +315,13 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             case TOK_LABEL: {
                 Label label = {tok.str, op_index};
                 // patching jumps
-                for (size_t i = 0; i < saved_jumps.size; i++) {
+                for (size_t i = 0; i < saved_jumps.size;) {
                     size_t jump_index = saved_jumps.data[i];
                     if (string_view_eq(opcodes->data[jump_index].operands[0].str, label.name)) {
                         opcodes->data[jump_index].operands[0].as_int = label.index;
                         dyn_remove(&saved_jumps, i, size_t);
-                        i--;
+                    } else {
+                        i++;
                     }
                 }
                 if (find_label(labels, label.name) >= 0) {
