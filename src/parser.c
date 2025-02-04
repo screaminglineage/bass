@@ -25,13 +25,6 @@ static inline char peek(Parser *parser) {
     return '\0';
 }
 
-static inline const char *peek_ref(Parser *parser) {
-    if (parser->end > 0) {
-        return &parser->source.data[parser->end];
-    }
-    return NULL;
-}
-
 bool get_opcode(StringView string, OpType *type) {
     for (size_t i = 0; i < OP_COUNT; i++) {
         if (string_view_cstring_eq(string, OPCODES[i].name)) {

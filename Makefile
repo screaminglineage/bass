@@ -1,12 +1,19 @@
+ifeq ($(OS), Windows_NT)
+	CC := x86_64-w64-mingw32-gcc
+else
+	CC := cc
+endif
+
 CFLAGS := -Wall -Wextra -Wpedantic
 
+.PHONY: clean
 all: bass
 
-release: src/main.c src/parser.c src/interpreter.c src/constants.h src/utils.h src/parser.h src/interpreter.h
-	gcc ${CFLAGS} -O3 src/*.c -o bass
+release: src/*.c src/*.h
+	${CC} ${CFLAGS} -O3 src/*.c -o bass
 
-bass: src/main.c src/parser.c src/interpreter.c src/constants.h src/utils.h src/parser.h src/interpreter.h
-	gcc ${CFLAGS} -ggdb src/*.c -o bass
+bass: src/*.c src/*.h
+	${CC} ${CFLAGS} -ggdb src/*.c -o bass
 
 test.bass:
 	touch $@
@@ -14,5 +21,10 @@ test.bass:
 run: bass test.bass
 	./bass test.bass
 
+.PHONY: examples
+examples: bass examples/
+	for file in examples/*.bass; do  echo $$file; ./bass $$file; echo ""; done
+
+.PHONY: clean
 clean:
 	rm bass

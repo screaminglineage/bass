@@ -52,7 +52,7 @@ bool parse_and_interpret(const char *source_file, bool debug) {
     return true;
 }
 
-void print_help() {
+void print_help(void) {
     fprintf(stderr, "usage: bass [--help|-h] [--debug|-d] [FILES ...]\n\n"
                     "a simple interpreted language that mimics the look and "
                     "feel of assembly\n\n"
