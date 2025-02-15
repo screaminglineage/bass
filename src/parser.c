@@ -312,7 +312,7 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
                     size_t jump_index = saved_jumps.data[i];
                     if (string_view_eq(opcodes->data[jump_index].operands[0].str, label.name)) {
                         opcodes->data[jump_index].operands[0].as_int = label.index;
-                        dyn_remove(&saved_jumps, i, size_t);
+                        dyn_swap_remove(&saved_jumps, i);
                     } else {
                         i++;
                     }

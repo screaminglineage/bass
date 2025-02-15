@@ -17,12 +17,11 @@ do {                                                                         \
     (da)->data[(da)->size++] = item;                                           \
 } while (0)
 
-#define dyn_remove(da, index, type)                                         \
+#define dyn_swap_remove(da, index)                                          \
 do {                                                                        \
+    assert((da)->size > 0 && "remove from empty array");                    \
     assert((index) < (da)->size && "index out of bounds");                  \
-    type tmp = (da)->data[(index)];                                         \
     (da)->data[(index)] = (da)->data[(da)->size - 1];                       \
-    (da)->data[(da)->size - 1] = tmp;                                       \
     (da)->size--;                                                           \
 } while (0)
 
