@@ -7,14 +7,14 @@
 #include <string.h>
 #include <assert.h>
 
-#define dyn_append(da, item)                                                      \
-do {                                                                         \
-    if ((da)->size == (da)->capacity) {                                        \
-        (da)->capacity = ((da)->capacity <= 0) ? 1 : (da)->capacity * 2;         \
-        (da)->data = realloc((da)->data, (da)->capacity * sizeof(*(da)->data));  \
-        assert((da)->data && "Catastrophic Failure: Allocation failed!");        \
-    }                                                                          \
-    (da)->data[(da)->size++] = item;                                           \
+#define dyn_append(da, item)                                                        \
+do {                                                                                \
+    if ((da)->size == (da)->capacity) {                                             \
+        (da)->capacity = ((da)->capacity <= 0) ? 1 : (da)->capacity * 2;            \
+        (da)->data = realloc((da)->data, (da)->capacity * sizeof(*(da)->data));     \
+        assert((da)->data && "Catastrophic Failure: Allocation failed!");           \
+    }                                                                               \
+    (da)->data[(da)->size++] = item;                                                \
 } while (0)
 
 #define dyn_swap_remove(da, index)                                          \
@@ -42,8 +42,8 @@ typedef struct {
 #define SV_FORMAT(sv) (int)(sv).length, (sv).data
 
 
-// Make sure that the C-String isnt NULL
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
+    if (!b) return a.length == 0;
     size_t i = 0;
     while (b[i] && i < a.length) {
         if (b[i] != a.data[i]) return false;
