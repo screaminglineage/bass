@@ -6,7 +6,7 @@ endif
 
 CFLAGS := -Wall -Wextra -Wpedantic
 
-.PHONY: clean
+.PHONY: all
 all: bass
 
 release: src/*.c src/*.h

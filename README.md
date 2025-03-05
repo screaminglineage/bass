@@ -69,15 +69,15 @@ Note that `_` can only be jumped to if it was explicitly declared.
 The special syntax `@r[0-7]` can be used as a shortcut for indirect addressing.
 
 This instructs the operation to use the value in the specified register as a memory address.
-For example, the following program stores, *100* into the memory address, *40* using this syntax, and then prints it
+For example, the following program stores, `100` into the memory address, `40` using this syntax, and then prints it
 ```asm
 move r0 #40
-move @r0 @100
+move @r0 #100
 println @40
 ```
 
 ### Registers
-There are 8 registers, `r0` to `r7`, which can be used for direct operations. All registers are initialized to 0 at the program start. There are two special registers, the program counter and stack pointer which are inaccessible through `bass` for now. Another flag variable stores the result of the last comparison (can be 0, -1 or 1) and is also inaccessible through `bass`.
+There are 8 registers, `r0` to `r7`, which can be explicitly used for operations. All registers are initialized to 0 at the program start. There are two special registers, the program counter and stack pointer which are inaccessible through `bass` for now. Another flag variable stores the result of the last comparison (can be 0, -1 or 1) and is also inaccessible through `bass`.
 
 ### Memory 
 A total of 4MB of addressable memory is available, which is also initialized to 0 at program start. All addresses are simply an index from the start of the memory. When storing integers into memory, make sure to properly align them to 4 bytes (or whatever `sizeof(int)` is) to prevent unexpected behaviour. For example, storing elements at `@0`, `@4`, and `@8` simultaneously should be fine, but trying to access or store elements at `@5` will instead create a view into the middle of integers in the memory.
