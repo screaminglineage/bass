@@ -183,3 +183,7 @@ _:
 ```
 
 For more examples, check out the [examples](./examples) directory.
+
+## Bonus
+
+The [syntax](./syntax) directory contains a syntax highlighting file for vim (also works on neovim).
