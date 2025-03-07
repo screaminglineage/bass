@@ -1,6 +1,3 @@
-// TODO: do not use ctype.h
-#include <ctype.h>
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,11 +32,29 @@ bool get_opcode(StringView string, OpType *type) {
     return false;
 }
 
+bool is_space(char ch) {
+    return ch == ' ' || ch == '\n' || ch == '\t'
+        || ch == '\f' || ch == '\r' || ch == '\v';
+}
+
+bool is_alpha(char ch) {
+    return ('A' <= ch && ch <= 'Z')
+        || ('a' <= ch && ch <= 'z');
+}
+
+bool is_digit(char ch) {
+    return '0' <= ch && ch <= '9';
+}
+
+bool is_alnum(char ch) {
+    return is_alpha(ch) || is_digit(ch);
+}
+
 bool parse_num(Parser *parser, int *num, StringView *string) {
     // skip the `#` before numeric literals
     int skip = parser->end - parser->start;
 
-    while (!isspace(peek(parser)) && peek(parser) != '\0') {
+    while (!is_space(peek(parser)) && peek(parser) != '\0') {
         next(parser);
     }
 
@@ -64,7 +79,7 @@ bool parse_num(Parser *parser, int *num, StringView *string) {
 }
 
 static inline StringView parse_identifier(Parser *parser) {
-    while (isalnum(peek(parser)) || peek(parser) == '_') {
+    while (is_alnum(peek(parser)) || peek(parser) == '_') {
         next(parser);
     }
     return get_string(parser);
@@ -149,7 +164,7 @@ bool next_token(Parser *parser, Token *token) {
     StringView string = {0};
 
     do {
-        while (isspace(peek(parser))) {
+        while (is_space(peek(parser))) {
             current = next(parser);
             if (current == '\n') {
                 parser->line_start = parser->end;
@@ -160,7 +175,7 @@ bool next_token(Parser *parser, Token *token) {
             while ((next(parser)) != '\n');
             parser->line += 1;
         }
-    } while(isspace(peek(parser)));
+    } while(is_space(peek(parser)));
     parser->start = parser->end;
 
     current = next(parser);
@@ -203,7 +218,7 @@ bool next_token(Parser *parser, Token *token) {
         } break;
         case '@': {
             // parsing as memory address
-            if (isdigit(peek(parser))) {
+            if (is_digit(peek(parser))) {
                 if (!parse_num(parser, &num, &string)) {
                     return false;
                 }
@@ -221,7 +236,7 @@ bool next_token(Parser *parser, Token *token) {
                 parser->start = parser->end;
                 // parsing as address at register
                 string = parse_identifier(parser);
-                if (!isspace(peek(parser)) && peek(parser) != '\0') {
+                if (!is_space(peek(parser)) && peek(parser) != '\0') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
                             parser->line, get_col(parser), peek(parser));
                     return false;
@@ -237,9 +252,9 @@ bool next_token(Parser *parser, Token *token) {
         } break;
 
         default: {
-            if (isalpha(current) || current == '_') {
+            if (is_alpha(current) || current == '_') {
                 string = parse_identifier(parser);
-                if (!isspace(peek(parser)) && peek(parser) != '\0' && peek(parser) != ':') {
+                if (!is_space(peek(parser)) && peek(parser) != '\0' && peek(parser) != ':') {
                     fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
                             parser->line, get_col(parser), peek(parser));
                     return false;
@@ -265,7 +280,7 @@ bool next_token(Parser *parser, Token *token) {
                 fprintf(stderr, "bass:%d:%zu error: unexpected character `%c`\n",
                         parser->line, get_col(parser), current);
 
-                if (isdigit(current)) {
+                if (is_digit(current)) {
                     fprintf(stderr, "help: try prefixing `%c` with `r` for register, `#` "
                                     "for a literal value or `@` for a memory address\n", current);
                 }
