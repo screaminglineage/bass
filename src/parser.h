@@ -153,6 +153,9 @@ typedef struct {
 
 #define get_col(parser) ((parser)->start - (parser)->line_start + 1)
 
+#define make_token(parser, type, string, value) \
+    ((Token){(parser)->line, get_col((parser)), (type), (string), {(value)}})
+
 static inline void parser_init(Parser *parser, StringView source_code) {
     parser->source = source_code;
     parser->start = 0;
