@@ -43,13 +43,9 @@ typedef struct {
 
 
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
-    if (!b) return a.length == 0;
-    size_t i = 0;
-    while (b[i] && i < a.length) {
-        if (b[i] != a.data[i]) return false;
-        i++;
-    }
-    return !b[i] && (i == a.length);
+    if (b == NULL) return a.length == 0;
+    if (a.length == 0) return b == NULL;
+    return memcmp(a.data, b, a.length) == 0;
 }
 
 static inline char *string_view_to_cstring(StringView sv) {
