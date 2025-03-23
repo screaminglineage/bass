@@ -115,6 +115,9 @@ bool parse_register(StringView string, int *reg_num) {
 
 bool next_token(Parser *parser, Token *token);
 
+// start <= <parsed token> <= end denotes the range 
+// in which <parsed token> should fall to be an operand of an opcode
+// see the TokenType enum for more info
 bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType end, OpCode *opcode) {
     Operand operands[MAX_OPERANDS] = {0};
     for (int i = 0; i < OPCODES[op_type].arity; i++) {
