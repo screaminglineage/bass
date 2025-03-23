@@ -119,14 +119,13 @@ bool next_token(Parser *parser, Token *token);
 // in which <parsed token> should fall to be an operand of an opcode
 // see the TokenType enum for more info
 bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType end, OpCode *opcode) {
-    Operand operands[MAX_OPERANDS] = {0};
     for (int i = 0; i < OPCODES[op_type].arity; i++) {
         Token operand = {0};
         if (!next_token(parser, &operand)) {
             return false;
         }
         if (start <= operand.type && operand.type <= end) { 
-            operands[i] = operand;
+            opcode->operands[i] = operand;
         } else {
             fprintf(stderr, "bass:%d:%zu: error: unexpected %s", operand.line, operand.col, TOKEN_STRING[operand.type]);
             if (operand.type != TOK_EOF) fprintf(stderr, ", `%.*s`,", SV_FORMAT(operand.str));
@@ -138,18 +137,17 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
         }
     }
     opcode->op = op_type;
-    memcpy(&opcode->operands, operands, sizeof(*operands) * MAX_OPERANDS);
     return true;
 }
 
 bool parse_opcode(Parser *parser, Token opcode_token, OpCode *opcode) {
     OpType op_type = opcode_token.as_opcode;
-    if (op_type == OP_JUMP || op_type == OP_JUMPZ 
-        || op_type == OP_JUMPG || op_type == OP_JUMPL 
+    if (op_type == OP_JUMP || op_type == OP_JUMPZ
+        || op_type == OP_JUMPG || op_type == OP_JUMPL
         || op_type == OP_CALL) {
         if (!parse_operands(parser, op_type, TOK_IDENTIFIER, TOK_ADDRESS_REG, opcode))
             return false;
-    } else if (op_type == OP_PRINT || op_type == OP_PRINTLN) {
+    } else if (op_type == OP_PRINT || op_type == OP_PRINTLN || op_type == OP_STORE) {
         if (!parse_operands(parser, op_type, TOK_REGISTER, TOK_LITERAL_STR, opcode))
             return false;
     } else {

@@ -25,7 +25,7 @@ typedef enum {
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
 
-    // applicable as operands to print
+    // applicable as operands to print and store
     TOK_LITERAL_CHAR,
     TOK_LITERAL_STR,
 
@@ -62,6 +62,8 @@ typedef enum {
     OP_STORE,
     OP_PRINT,
     OP_PRINTLN,
+    OP_PRINTB,
+    OP_PRINTBLN,
     OP_PUSH,
     OP_POP,
     OP_CMP,
@@ -106,6 +108,8 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_STORE] = {.name = "store", .arity = 2},
     [OP_PRINT] = {.name = "print", .arity = 1},
     [OP_PRINTLN] = {.name = "println", .arity = 1},
+    [OP_PRINTB] = {.name = "printb", .arity = 2},
+    [OP_PRINTBLN] = {.name = "printbln", .arity = 2},
     [OP_PUSH] = {.name = "push", .arity = 1},
     [OP_POP] = {.name = "pop", .arity = 1},
     [OP_CMP] = {.name = "cmp", .arity = 2},
