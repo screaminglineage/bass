@@ -83,7 +83,6 @@ static inline void execute_print(State *state, Operand operand) {
 
 static inline bool execute_print_bytes(State *state, OpCode *opcode) {
     Operand operand = opcode->operands[0];
-    
     char *start = 0;
     switch (operand.type) {
     case TOK_LITERAL_NUM: start = (char *)&operand.as_int; break;
@@ -243,6 +242,16 @@ bool execute_opcode(State *state, OpCode *opcode) {
     case OP_PRINTBLN: {
         if (!execute_print_bytes(state, opcode)) return false;
         putchar('\n');
+    } break;
+    case OP_READ: {
+        int index = eval_int(state, opcode->operands[0]);
+        int count = eval_int(state, opcode->operands[1]);
+        if (fgets((void*)&state->memory[index], count, stdin) == NULL) {
+            fprintf(stderr, "bass:%d:%zu: error: failed to read from stdin at opcode `%s`\n",
+                    opcode->line, opcode->col, OPCODES[opcode->op].name);
+            return false;
+        }
+        state->memory[strcspn((void*)&state->memory[index], "\n")] = 0;
     } break;
     case OP_NO:
         break;

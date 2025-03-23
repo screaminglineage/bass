@@ -1,7 +1,7 @@
 syntax clear
 
 syntax keyword opcodes nop add sub mul div mod
-syntax keyword opcodes move load store push pop
+syntax keyword opcodes move load store push pop read
 syntax keyword opcodes println print printbln printb
 syntax keyword opcodes cmp jump jumpl jumpg jumpz call return
 
