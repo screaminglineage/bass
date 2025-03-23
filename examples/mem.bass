@@ -23,3 +23,21 @@ store @r5 #1000         ; equivalent to `move @45 #1000`
 load r0 @r5
 println r0
 
+
+; Finally, store can also be used to directly write strings into
+; memory, which can then be printed using printb and printbln
+; They can also be accessed as individual bytes through other opcodes
+
+store r0 "hello world"
+printbln @r0 #11
+
+; Note that print works on ints (4 bytes) while printb works on a single byte
+; So the following will not work, instead printing a number formed by
+; packing the first 4 bytes of the string
+
+println @r0
+
+; Use printb/printbln with a length of 1 to print a single character
+
+printbln @r0 #1     ; prints 'h'
+
