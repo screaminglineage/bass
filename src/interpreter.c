@@ -23,6 +23,22 @@ static inline int eval_int(State *state, Operand operand) {
     }
 }
 
+// evaluates values that are treated as chars
+static inline int eval_char(State *state, Operand operand) {
+    switch (operand.type) {
+    case TOK_LITERAL_NUM:
+        return operand.as_int;
+    case TOK_REGISTER:
+        return state->registers[operand.as_int];
+    case TOK_ADDRESS:
+        return *(char *)(&state->memory[operand.as_int]);
+    case TOK_ADDRESS_REG:
+        return *(char *)(&state->memory[state->registers[operand.as_int]]);
+    default:
+        UNREACHABLE_INFO("Passed in value was not a character!");
+    }
+}
+
 static inline bool set_lval(State *state, OpCode *op, int rval) {
     // first operand is always the lvalue to be set
     Operand lval = op->operands[0];
@@ -62,6 +78,32 @@ static inline void execute_print(State *state, Operand operand) {
     default:
         printf("%d", eval_int(state, operand));
     }
+}
+
+
+static inline bool execute_print_bytes(State *state, OpCode *opcode) {
+    Operand operand = opcode->operands[0];
+    char *start = 0;
+    switch (operand.type) {
+    case TOK_LITERAL_NUM: start = (char *)&operand.as_int; break;
+    case TOK_REGISTER: start = (char *)&state->registers[operand.as_int]; break;
+    case TOK_ADDRESS: start = (char *)(&state->memory[operand.as_int]); break;
+    case TOK_ADDRESS_REG: start = (char *)(&state->memory[state->registers[operand.as_int]]); break;
+    default:
+        UNREACHABLE_INFO("Passed in value was not a character");
+    }
+
+    int count = eval_int(state, opcode->operands[1]);
+    if (count >= MEMORY_SIZE) {
+        fprintf(stderr, "bass:%d:%zu: error: string access will go out of bounds at opcode `%s`, "
+                "memory size is %d bytes, but string length is %d\n",
+                opcode->line, opcode->col, OPCODES[opcode->op].name, MEMORY_SIZE, count);
+        return false;
+    }
+    for (int i = 0; i < count; i++) {
+        putchar(start[i]);
+    }
+    return true;
 }
 
 static inline int eval_jump(State *state, OpCode *opcode) {
@@ -123,14 +165,25 @@ bool execute_opcode(State *state, OpCode *opcode) {
     } break;
     case OP_LOAD: {
         int index = eval_int(state, opcode->operands[1]);
-        int first = *(int *)(&state->memory[index]);
-        if (!set_lval(state, opcode, first)) {
+        int value = *(int *)(&state->memory[index]);
+        if (!set_lval(state, opcode, value)) {
             return false;
         }
     } break;
     case OP_STORE: {
         int index = eval_int(state, opcode->operands[0]);
-        *(int *)(&state->memory[index]) = opcode->operands[1].as_int;
+        Operand operand = opcode->operands[1];
+        switch (operand.type) {
+            case TOK_LITERAL_STR: {
+                memcpy(&state->memory[index], operand.str.data, operand.str.length);
+            } break;
+            case TOK_LITERAL_CHAR: {
+                *(char *)(&state->memory[index]) = operand.as_int;
+            } break;
+            default: {
+                *(int *)(&state->memory[index]) = eval_int(state, operand);
+            }
+        }
     } break;
     case OP_CMP: {
         int first = eval_int(state, opcode->operands[0]);
@@ -182,6 +235,23 @@ bool execute_opcode(State *state, OpCode *opcode) {
     case OP_PRINTLN: {
         execute_print(state, opcode->operands[0]);
         putchar('\n');
+    } break;
+    case OP_PRINTB: {
+        if (!execute_print_bytes(state, opcode)) return false;
+    } break;
+    case OP_PRINTBLN: {
+        if (!execute_print_bytes(state, opcode)) return false;
+        putchar('\n');
+    } break;
+    case OP_READ: {
+        int index = eval_int(state, opcode->operands[0]);
+        int count = eval_int(state, opcode->operands[1]);
+        if (fgets((void*)&state->memory[index], count, stdin) == NULL) {
+            fprintf(stderr, "bass:%d:%zu: error: failed to read from stdin at opcode `%s`\n",
+                    opcode->line, opcode->col, OPCODES[opcode->op].name);
+            return false;
+        }
+        state->memory[strcspn((void*)&state->memory[index], "\n")] = 0;
     } break;
     case OP_NO:
         break;

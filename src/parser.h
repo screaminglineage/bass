@@ -14,6 +14,9 @@ typedef struct {
 } Parser;
 
 
+// TODO: pass in these elements by OR-ing them rather than
+// depending on the order of elements in the enum to express a range
+
 // order of elements matters in this enum
 typedef enum {
     // applicable as operands to jump
@@ -25,7 +28,7 @@ typedef enum {
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
 
-    // applicable as operands to print
+    // applicable as operands to print and store
     TOK_LITERAL_CHAR,
     TOK_LITERAL_STR,
 
@@ -62,6 +65,9 @@ typedef enum {
     OP_STORE,
     OP_PRINT,
     OP_PRINTLN,
+    OP_PRINTB,
+    OP_PRINTBLN,
+    OP_READ,
     OP_PUSH,
     OP_POP,
     OP_CMP,
@@ -106,6 +112,9 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_STORE] = {.name = "store", .arity = 2},
     [OP_PRINT] = {.name = "print", .arity = 1},
     [OP_PRINTLN] = {.name = "println", .arity = 1},
+    [OP_PRINTB] = {.name = "printb", .arity = 2},
+    [OP_PRINTBLN] = {.name = "printbln", .arity = 2},
+    [OP_READ] = {.name = "read", .arity = 2},
     [OP_PUSH] = {.name = "push", .arity = 1},
     [OP_POP] = {.name = "pop", .arity = 1},
     [OP_CMP] = {.name = "cmp", .arity = 2},
@@ -152,6 +161,9 @@ typedef struct {
     (StringView){&(parser)->source.data[(start)], (end) - (start)}
 
 #define get_col(parser) ((parser)->start - (parser)->line_start + 1)
+
+#define make_token(parser, type, string, value) \
+    ((Token){(parser)->line, get_col((parser)), (type), (string), {(value)}})
 
 static inline void parser_init(Parser *parser, StringView source_code) {
     parser->source = source_code;

@@ -7,22 +7,21 @@
 #include <string.h>
 #include <assert.h>
 
-#define dyn_append(da, item)                                                      \
-do {                                                                         \
-    if ((da)->size == (da)->capacity) {                                        \
-        (da)->capacity = ((da)->capacity <= 0) ? 1 : (da)->capacity * 2;         \
-        (da)->data = realloc((da)->data, (da)->capacity * sizeof(*(da)->data));  \
-        assert((da)->data && "Catastrophic Failure: Allocation failed!");        \
-    }                                                                          \
-    (da)->data[(da)->size++] = item;                                           \
+#define dyn_append(da, item)                                                        \
+do {                                                                                \
+    if ((da)->size == (da)->capacity) {                                             \
+        (da)->capacity = ((da)->capacity <= 0) ? 1 : (da)->capacity * 2;            \
+        (da)->data = realloc((da)->data, (da)->capacity * sizeof(*(da)->data));     \
+        assert((da)->data && "Catastrophic Failure: Allocation failed!");           \
+    }                                                                               \
+    (da)->data[(da)->size++] = item;                                                \
 } while (0)
 
-#define dyn_remove(da, index, type)                                         \
+#define dyn_swap_remove(da, index)                                          \
 do {                                                                        \
+    assert((da)->size > 0 && "remove from empty array");                    \
     assert((index) < (da)->size && "index out of bounds");                  \
-    type tmp = (da)->data[(index)];                                         \
     (da)->data[(index)] = (da)->data[(da)->size - 1];                       \
-    (da)->data[(da)->size - 1] = tmp;                                       \
     (da)->size--;                                                           \
 } while (0)
 
@@ -43,14 +42,10 @@ typedef struct {
 #define SV_FORMAT(sv) (int)(sv).length, (sv).data
 
 
-// Make sure that the C-String isnt NULL
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
-    size_t i = 0;
-    while (b[i] && i < a.length) {
-        if (b[i] != a.data[i]) return false;
-        i++;
-    }
-    return !b[i] && (i == a.length);
+    if (b == NULL) return a.length == 0;
+    if (a.length == 0) return b == NULL;
+    return memcmp(a.data, b, a.length) == 0;
 }
 
 static inline char *string_view_to_cstring(StringView sv) {

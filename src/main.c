@@ -40,7 +40,6 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
 
     Parser p;
     parser_init(&p, sv);
-    // TODO: leaking opcodes and labels
     OpCodes opcodes = {0};
     Labels labels = {0};
     if (!parse(&p, &opcodes, &labels)) {
@@ -82,6 +81,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
     }
     free((void *)sv.data);
     free(state.memory);
+    free(opcodes.data);
     return true;
 }
 
