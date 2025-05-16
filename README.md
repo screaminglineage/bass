@@ -173,6 +173,10 @@ start:
 end:
 ```
 
+### Entrypoint
+
+`_` is a special label which marks the entrypoint of the program. The execution starts from this label. If it isnt specified, then execution begins from the top of the file. 
+
 ```asm
 hello:
     println "Hello World"
