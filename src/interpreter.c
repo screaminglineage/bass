@@ -158,8 +158,8 @@ bool execute_opcode(State *state, OpCode *opcode) {
         }
     } break;
     case OP_MOVE: {
-        int first = eval_int(state, opcode->operands[1]);
-        if (!set_lval(state, opcode, first)) {
+        int value = eval_int(state, opcode->operands[1]);
+        if (!set_lval(state, opcode, value)) {
             return false;
         }
     } break;

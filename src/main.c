@@ -18,9 +18,9 @@ void compile_opcode(Labels labels, OpCodes opcodes) {
             printf("-------------------------\n");
             j++;
         }
-
+        
     }
-
+    
     for (; i < labels.size; i++) {
         printf("Label: %.*s (opcode: %zu)\n", SV_FORMAT(labels.data[i].name), labels.data[i].index);
         printf("-------------------------\n");
@@ -37,7 +37,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
     if (!read_to_string(source_file, &sv)) {
         return false;
     }
-
+    
     Parser p;
     parser_init(&p, sv);
     OpCodes opcodes = {0};
@@ -51,7 +51,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
     if (i >= 0) {
         entry = labels.data[i].index;
     }
-
+    
     if (debug) {
         printf("Opcodes:\n");
         for (size_t i = 0; i < opcodes.size; i++) {
@@ -60,12 +60,12 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
         printf("\nLabels:\n");
         display_labels(labels);
     }
-
+    
     if (compile) {
         compile_opcode(labels, opcodes);
         TODO("compile opcodes to machine code");
     }
-
+    
     State state;
     if (!state_init(&state)) {
         printf("bass: failed to allocate enough memory, exiting\n");
@@ -73,7 +73,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
         return false;
     }
     state.reg_pc = entry;
-
+    
     if (!interpret(&state, opcodes)) {
         free((void *)sv.data);
         free(state.memory);
@@ -87,19 +87,19 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
 
 void print_help() {
     fprintf(stderr, "usage: bass [--help|-h] [--debug|-d] [--compile|-c] [FILES ...]\n\n"
-                    "a simple interpreted language that mimics the look and "
-                    "feel of assembly\n\n"
-                    "options:\n"
-                    "  -h, --help       show this help message and exit\n"
-                    "  -c, --compile    compile bass into an executable file\n"
-                    "  -d, --debug      show some debug info before running file\n");
+            "a simple interpreted language that mimics the look and "
+            "feel of assembly\n\n"
+            "options:\n"
+            "  -h, --help       show this help message and exit\n"
+            "  -c, --compile    compile bass into an executable file\n"
+            "  -d, --debug      show some debug info before running file\n");
 }
 
 int main(int argc, char *argv[]) {
     bool debug = false;
     bool compile = false;
     int files_count = 0;
-
+    
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-d") == 0)) {
             if (!debug) {
@@ -121,11 +121,11 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
+    
     if (files_count == 0) {
         fprintf(stderr, "bass: no input files provided\n");
         return 1;
     }
-
+    
     return 0;
 }
