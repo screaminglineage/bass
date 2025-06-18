@@ -32,6 +32,9 @@ do {                                                                        \
 // MODULO that actually wraps-around to b - 1 if result is negative
 #define MODULO(a, b) ((a) - (b) * ((a) / (b)))
 
+#define MIN(a, b) ((a) < (b)? (a): (b))
+#define MAX(a, b) ((a) > (b)? (a): (b))
+
 typedef struct {
     const char *data;
     size_t length;
@@ -44,7 +47,7 @@ typedef struct {
 
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
     if (b == NULL) return a.length == 0;
-    if (a.length == 0) return b == NULL;
+    if (a.length != strlen(b)) return false;
     return memcmp(a.data, b, a.length) == 0;
 }
 
