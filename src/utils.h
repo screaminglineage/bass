@@ -44,6 +44,9 @@ typedef struct {
 // Use to print the StringView along with `%.*s` in the format string
 #define SV_FORMAT(sv) (int)(sv).length, (sv).data
 
+// Create a string view from a c-string literal
+#define SV(cstr) ((StringView){(cstr), sizeof(cstr)})
+
 
 static inline bool string_view_cstring_eq(StringView a, const char *b) {
     if (b == NULL) return a.length == 0;

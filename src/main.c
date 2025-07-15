@@ -2,42 +2,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "compiler.h"
 #include "interpreter.h"
 #include "parser.h"
 #include "utils.h"
 
-void compile_opcode(Labels labels, OpCodes opcodes) {
-    size_t i=0, j=0;
-    while (i < labels.size && j < opcodes.size) {
-        if (j == labels.data[i].index) {
-            printf("Label: %.*s (opcode: %zu)\n", SV_FORMAT(labels.data[i].name), labels.data[i].index);
-            printf("-------------------------\n");
-            i++;
-        } else {
-            display_opcode(opcodes.data[j]);
-            printf("-------------------------\n");
-            j++;
-        }
-        
-    }
-    
-    for (; i < labels.size; i++) {
-        printf("Label: %.*s (opcode: %zu)\n", SV_FORMAT(labels.data[i].name), labels.data[i].index);
-        printf("-------------------------\n");
-    }
-    for (; j < opcodes.size; j++) {
-        display_opcode(opcodes.data[j]);
-        printf("-------------------------\n");
-    }
-}
-
-
-bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
+bool parse_and_interpret(const char *source_file, bool debug, bool compile_file) {
     StringView sv;
     if (!read_to_string(source_file, &sv)) {
         return false;
     }
-    
+
     Parser p;
     parser_init(&p, sv);
     OpCodes opcodes = {0};
@@ -46,12 +21,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
         free((void *)sv.data);
         return false;
     }
-    size_t entry = 0;
-    int i = find_label(&labels, (StringView){"_", 1});
-    if (i >= 0) {
-        entry = labels.data[i].index;
-    }
-    
+
     if (debug) {
         printf("Opcodes:\n");
         for (size_t i = 0; i < opcodes.size; i++) {
@@ -60,20 +30,23 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile) {
         printf("\nLabels:\n");
         display_labels(labels);
     }
-    
-    if (compile) {
-        compile_opcode(labels, opcodes);
-        TODO("compile opcodes to machine code");
+
+    int entry_label = find_label(&labels, SV("_"));
+    if (entry_label == -1) {
+        entry_label = 0;
     }
-    
+    if (compile_file) {
+        return compile(labels, opcodes, (size_t)entry_label);
+    }
+
     State state;
     if (!state_init(&state)) {
         printf("bass: failed to allocate enough memory, exiting\n");
         free((void *)sv.data);
         return false;
     }
-    state.reg_pc = entry;
-    
+    state.reg_pc = labels.data[entry_label].index;
+
     if (!interpret(&state, opcodes)) {
         free((void *)sv.data);
         free(state.memory);
@@ -99,7 +72,7 @@ int main(int argc, char *argv[]) {
     bool debug = false;
     bool compile = false;
     int files_count = 0;
-    
+
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-d") == 0)) {
             if (!debug) {
@@ -121,11 +94,11 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    
+
     if (files_count == 0) {
         fprintf(stderr, "bass: no input files provided\n");
         return 1;
     }
-    
+
     return 0;
 }

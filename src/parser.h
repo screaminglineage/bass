@@ -83,6 +83,7 @@ typedef enum {
 
 // TODO: put line and col in a separate 
 // Location struct along with the filename
+// TODO: change the integer to 64 bits
 typedef struct {
     int line;
     size_t col;
@@ -123,7 +124,8 @@ static const OpCodeData OPCODES[OP_COUNT] = {
     [OP_JUMPG]        = {.name = "jumpg",    .arity = 1},
     [OP_JUMPL]        = {.name = "jumpl",    .arity = 1},
     [OP_CALL]         = {.name = "call",     .arity = 1},
-    [OP_RETURN]       = {.name = "return",   .arity = 0}};
+    [OP_RETURN]       = {.name = "return",   .arity = 0},
+};
 
 
 typedef Token Operand;

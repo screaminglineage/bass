@@ -18,6 +18,9 @@ bass: src/*.c src/*.h
 test.bass:
 	touch $@
 	
+compile: bass test.bass
+	./bass -c test.bass
+
 run: bass test.bass
 	./bass test.bass
 

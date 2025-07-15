@@ -370,8 +370,10 @@ bool parse(Parser *parser, OpCodes *opcodes, Labels *labels) {
             default: {
                 fprintf(stderr, "bass:%d:%zu: error: expected opcode or label, got %s, `%.*s`\n",
                         tok.line, tok.col, TOKEN_STRING[tok.type], SV_FORMAT(tok.str));
-                fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
-                        OPCODES[opcodes->data[opcodes->size-1].op].name, OPCODES[opcodes->data[opcodes->size-1].op].arity);
+                if (opcodes->size > 0) {
+                    fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
+                            OPCODES[opcodes->data[opcodes->size-1].op].name, OPCODES[opcodes->data[opcodes->size-1].op].arity);
+                }
                 return false;
             } break;
         }
