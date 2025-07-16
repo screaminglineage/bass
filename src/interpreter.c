@@ -39,31 +39,22 @@ static inline int eval_char(State *state, Operand operand) {
     }
 }
 
-static inline bool set_lval(State *state, OpCode *op, int rval) {
+static inline void set_lval(State *state, OpCode *op, int rval) {
     // first operand is always the lvalue to be set
     Operand lval = op->operands[0];
 
     switch (lval.type) {
     case TOK_REGISTER:
         state->registers[lval.as_int] = rval;
-        return true;
+        break;
     case TOK_ADDRESS:
         *(int *)(&state->memory[lval.as_int]) = rval;
-        return true;
+        break;
     case TOK_ADDRESS_REG:
         *(int *)(&state->memory[state->registers[lval.as_int]]) = rval;
-        return true;
-    default: {
-        fprintf(
-            stderr,
-            "bass: expected register or memory address after opcode `%s`, but "
-            "got %s: `%.*s` at: %d:%zu\n"
-            "help: an rvalue was expected but an lvalue was found, check if "
-            "you put a `#` instead of a `r` or `@`\n",
-            OPCODES[op->op].name, TOKEN_STRING[lval.type],
-            SV_FORMAT(lval.str), op->line, op->col);
-        return false;
-    }
+        break;
+    default:
+        UNREACHABLE_INFO("passed in value was not an lvalue");
     }
 }
 
@@ -114,26 +105,21 @@ static inline int eval_jump(State *state, OpCode *opcode) {
 
 bool execute_opcode(State *state, OpCode *opcode) {
     switch (opcode->op) {
+    case OP_NO: break;
     case OP_ADD: {
-        if (!set_lval(state, opcode,
+        set_lval(state, opcode,
                 eval_int(state, opcode->operands[1])
-                + eval_int(state, opcode->operands[2]))) {
-            return false;
-        }
+                + eval_int(state, opcode->operands[2]));
     } break;
     case OP_SUB: {
-        if (!set_lval(state, opcode, 
+        set_lval(state, opcode, 
                 eval_int(state, opcode->operands[1])
-                - eval_int(state, opcode->operands[2]))) {
-            return false;
-        }
+                - eval_int(state, opcode->operands[2]));
     } break;
     case OP_MUL: {
-        if (!set_lval(state, opcode, 
+        set_lval(state, opcode, 
                 eval_int(state, opcode->operands[1])
-                * eval_int(state, opcode->operands[2]))) {
-            return false;
-        }
+                * eval_int(state, opcode->operands[2]));
     } break;
     case OP_DIV: {
         int n = eval_int(state, opcode->operands[2]);
@@ -142,9 +128,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
                     opcode->line, opcode->col, OPCODES[opcode->op].name);
             return false;
         }
-        if (!set_lval(state, opcode, eval_int(state, opcode->operands[1]) / n)) {
-            return false;
-        }
+        set_lval(state, opcode, eval_int(state, opcode->operands[1]) / n);
     } break;
     case OP_MOD: {
         int n = eval_int(state, opcode->operands[2]);
@@ -153,22 +137,16 @@ bool execute_opcode(State *state, OpCode *opcode) {
                     opcode->line, opcode->col, OPCODES[opcode->op].name);
             return false;
         }
-        if (!set_lval(state, opcode, eval_int(state, opcode->operands[1]) % n)) {
-            return false;
-        }
+        set_lval(state, opcode, eval_int(state, opcode->operands[1]) % n);
     } break;
     case OP_MOVE: {
         int value = eval_int(state, opcode->operands[1]);
-        if (!set_lval(state, opcode, value)) {
-            return false;
-        }
+        set_lval(state, opcode, value);
     } break;
     case OP_LOAD: {
         int index = eval_int(state, opcode->operands[1]);
         int value = *(int *)(&state->memory[index]);
-        if (!set_lval(state, opcode, value)) {
-            return false;
-        }
+        set_lval(state, opcode, value);
     } break;
     case OP_STORE: {
         int index = eval_int(state, opcode->operands[0]);
@@ -225,9 +203,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
     case OP_POP: {
         state->reg_sp = MODULO(state->reg_sp - 1, STACK_MAX);
         int value = state->stack[state->reg_sp];
-        if (!set_lval(state, opcode, value)) {
-            return false;
-        }
+        set_lval(state, opcode, value);
     } break;
     case OP_PRINT: {
         execute_print(state, opcode->operands[0]);
@@ -253,8 +229,6 @@ bool execute_opcode(State *state, OpCode *opcode) {
         }
         state->memory[strcspn((void*)&state->memory[index], "\n")] = 0;
     } break;
-    case OP_NO:
-        break;
     default:
         UNREACHABLE();
     }

@@ -24,9 +24,9 @@ typedef enum {
 
     // applicable as operands in general
     TOK_REGISTER,
-    TOK_LITERAL_NUM,
     TOK_ADDRESS,
     TOK_ADDRESS_REG,
+    TOK_LITERAL_NUM,
 
     // applicable as operands to print and store
     TOK_LITERAL_CHAR,
@@ -95,36 +95,36 @@ typedef struct {
     };
 } Token;
 
-
 typedef struct {
     const char *name;
-    int arity; // no of arguments it takes
+    int arity;         // no of arguments it takes
+    bool sets_operand; // sets the first operand
 } OpCodeData;
 
 static const OpCodeData OPCODES[OP_COUNT] = {
-    [OP_NO]           = {.name = "nop",      .arity = 0},
-    [OP_ADD]          = {.name = "add",      .arity = 3},
-    [OP_SUB]          = {.name = "sub",      .arity = 3},
-    [OP_MUL]          = {.name = "mul",      .arity = 3},
-    [OP_DIV]          = {.name = "div",      .arity = 3},
-    [OP_MOD]          = {.name = "mod",      .arity = 3},
-    [OP_MOVE]         = {.name = "move",     .arity = 2},
-    [OP_LOAD]         = {.name = "load",     .arity = 2},
-    [OP_STORE]        = {.name = "store",    .arity = 2},
-    [OP_PRINT]        = {.name = "print",    .arity = 1},
-    [OP_PRINTLN]      = {.name = "println",  .arity = 1},
-    [OP_PRINTB]       = {.name = "printb",   .arity = 2},
-    [OP_PRINTBLN]     = {.name = "printbln", .arity = 2},
-    [OP_READ]         = {.name = "read",     .arity = 2},
-    [OP_PUSH]         = {.name = "push",     .arity = 1},
-    [OP_POP]          = {.name = "pop",      .arity = 1},
-    [OP_CMP]          = {.name = "cmp",      .arity = 2},
-    [OP_JUMP]         = {.name = "jump",     .arity = 1},
-    [OP_JUMPZ]        = {.name = "jumpz",    .arity = 1},
-    [OP_JUMPG]        = {.name = "jumpg",    .arity = 1},
-    [OP_JUMPL]        = {.name = "jumpl",    .arity = 1},
-    [OP_CALL]         = {.name = "call",     .arity = 1},
-    [OP_RETURN]       = {.name = "return",   .arity = 0},
+    [OP_NO]        = {.name = "nop",      .arity = 0, .sets_operand = false },
+    [OP_ADD]       = {.name = "add",      .arity = 3, .sets_operand = true  },
+    [OP_SUB]       = {.name = "sub",      .arity = 3, .sets_operand = true  },
+    [OP_MUL]       = {.name = "mul",      .arity = 3, .sets_operand = true  },
+    [OP_DIV]       = {.name = "div",      .arity = 3, .sets_operand = true  },
+    [OP_MOD]       = {.name = "mod",      .arity = 3, .sets_operand = true  },
+    [OP_MOVE]      = {.name = "move",     .arity = 2, .sets_operand = true  },
+    [OP_LOAD]      = {.name = "load",     .arity = 2, .sets_operand = false },
+    [OP_STORE]     = {.name = "store",    .arity = 2, .sets_operand = true  },
+    [OP_PRINT]     = {.name = "print",    .arity = 1, .sets_operand = false },
+    [OP_PRINTLN]   = {.name = "println",  .arity = 1, .sets_operand = false },
+    [OP_PRINTB]    = {.name = "printb",   .arity = 2, .sets_operand = false },
+    [OP_PRINTBLN]  = {.name = "printbln", .arity = 2, .sets_operand = false },
+    [OP_READ]      = {.name = "read",     .arity = 2, .sets_operand = true  },
+    [OP_PUSH]      = {.name = "push",     .arity = 1, .sets_operand = false },
+    [OP_POP]       = {.name = "pop",      .arity = 1, .sets_operand = true  },
+    [OP_CMP]       = {.name = "cmp",      .arity = 2, .sets_operand = false },
+    [OP_JUMP]      = {.name = "jump",     .arity = 1, .sets_operand = false },
+    [OP_JUMPZ]     = {.name = "jumpz",    .arity = 1, .sets_operand = false },
+    [OP_JUMPG]     = {.name = "jumpg",    .arity = 1, .sets_operand = false },
+    [OP_JUMPL]     = {.name = "jumpl",    .arity = 1, .sets_operand = false },
+    [OP_CALL]      = {.name = "call",     .arity = 1, .sets_operand = false },
+    [OP_RETURN]    = {.name = "return",   .arity = 0, .sets_operand = false },
 };
 
 

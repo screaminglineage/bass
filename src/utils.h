@@ -45,7 +45,7 @@ typedef struct {
 #define SV_FORMAT(sv) (int)(sv).length, (sv).data
 
 // Create a string view from a c-string literal
-#define SV(cstr) ((StringView){(cstr), sizeof(cstr)})
+#define SV(cstr) ((StringView){(cstr), sizeof(cstr) - 1})
 
 
 static inline bool string_view_cstring_eq(StringView a, const char *b) {

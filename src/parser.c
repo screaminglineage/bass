@@ -119,20 +119,29 @@ bool next_token(Parser *parser, Token *token);
 // in which <parsed token> should fall to be an operand of an opcode
 // see the TokenType enum for more info
 bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType end, OpCode *opcode) {
-    for (int i = 0; i < OPCODES[op_type].arity; i++) {
+    OpCodeData opcode_data = OPCODES[op_type];
+    for (int i = 0; i < opcode_data.arity; i++) {
         Token operand = {0};
         if (!next_token(parser, &operand)) {
             return false;
         }
-        if (start <= operand.type && operand.type <= end) { 
+        if (start <= operand.type && operand.type <= end) {
+            if (i == 0 && opcode_data.sets_operand && operand.type == TOK_LITERAL_NUM) {
+                fprintf(stderr, "bass:%d:%zu: error: cannot write into a %s: `%.*s` "
+                    "at opcode `%s`, expected a register or memory address instead\n"
+                    "help: check if you put a `#` instead of a `r` or `@`\n",
+                    operand.line, operand.col, TOKEN_STRING[operand.type],
+                    SV_FORMAT(operand.str), opcode_data.name);
+                return false;
+            }
             opcode->operands[i] = operand;
         } else {
             fprintf(stderr, "bass:%d:%zu: error: unexpected %s", operand.line, operand.col, TOKEN_STRING[operand.type]);
             if (operand.type != TOK_EOF) fprintf(stderr, ", `%.*s`,", SV_FORMAT(operand.str));
-            fprintf(stderr, " after opcode `%s`\n", OPCODES[op_type].name);
+            fprintf(stderr, " after opcode `%s`\n", opcode_data.name);
 
             fprintf(stderr, "help: opcode `%s` takes %d argument(s)\n",
-                    OPCODES[op_type].name, OPCODES[op_type].arity);
+                    opcode_data.name, opcode_data.arity);
             return false;
         }
     }
@@ -145,13 +154,13 @@ bool parse_opcode(Parser *parser, Token opcode_token, OpCode *opcode) {
     if (op_type == OP_JUMP || op_type == OP_JUMPZ
         || op_type == OP_JUMPG || op_type == OP_JUMPL
         || op_type == OP_CALL) {
-        if (!parse_operands(parser, op_type, TOK_IDENTIFIER, TOK_ADDRESS_REG, opcode))
+        if (!parse_operands(parser, op_type, TOK_IDENTIFIER, TOK_LITERAL_NUM, opcode))
             return false;
     } else if (op_type == OP_PRINT || op_type == OP_PRINTLN || op_type == OP_STORE) {
         if (!parse_operands(parser, op_type, TOK_REGISTER, TOK_LITERAL_STR, opcode))
             return false;
     } else {
-        if (!parse_operands(parser, op_type, TOK_REGISTER, TOK_ADDRESS_REG, opcode))
+        if (!parse_operands(parser, op_type, TOK_REGISTER, TOK_LITERAL_NUM, opcode))
             return false;
     }
     opcode->line = opcode_token.line;
