@@ -174,6 +174,7 @@ bool next_token(Parser *parser, Token *token) {
         }
         while (peek(parser) == ';') {
             while ((next(parser)) != '\n');
+            parser->line_start = parser->end;
             parser->line += 1;
         }
     } while(is_space(peek(parser)));

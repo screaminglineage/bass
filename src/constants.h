@@ -5,5 +5,6 @@
 #define STACK_MAX 2048
 #define MEMORY_SIZE (2048 * (2 << 10))
 #define MAX_OPERANDS 3
+#define DEFAULT_COMPILER_OUTPUT "bass-compiled.s"
 
 #endif

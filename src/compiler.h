@@ -1,4 +1,4 @@
 #include <stddef.h>
 #include "parser.h"
 
-bool compile(Labels labels, OpCodes opcodes, size_t entry);
+bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t entry);

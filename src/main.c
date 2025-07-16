@@ -1,13 +1,16 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 
 #include "compiler.h"
+#include "constants.h"
 #include "interpreter.h"
 #include "parser.h"
 #include "utils.h"
 
-bool parse_and_interpret(const char *source_file, bool debug, bool compile_file) {
+// TODO: rename this function as it also compiles
+bool parse_and_interpret(const char *source_file, bool debug, bool compile_file, const char *output_path) {
     StringView sv;
     if (!read_to_string(source_file, &sv)) {
         return false;
@@ -32,11 +35,10 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile_file)
     }
 
     int entry_label = find_label(&labels, SV("_"));
-    if (entry_label == -1) {
-        entry_label = 0;
-    }
+    // TODO: move parse, compile, and interpret into separate functions
     if (compile_file) {
-        return compile(labels, opcodes, (size_t)entry_label);
+        if (output_path == NULL) output_path = DEFAULT_COMPILER_OUTPUT;
+        return compile(output_path, labels, opcodes, (entry_label == -1)? 0: (size_t)entry_label);
     }
 
     State state;
@@ -45,7 +47,7 @@ bool parse_and_interpret(const char *source_file, bool debug, bool compile_file)
         free((void *)sv.data);
         return false;
     }
-    state.reg_pc = labels.data[entry_label].index;
+    state.reg_pc = (entry_label == -1)? 0: labels.data[entry_label].index;
 
     if (!interpret(&state, opcodes)) {
         free((void *)sv.data);
@@ -63,15 +65,23 @@ void print_help() {
             "a simple interpreted language that mimics the look and "
             "feel of assembly\n\n"
             "options:\n"
-            "  -h, --help       show this help message and exit\n"
-            "  -c, --compile    compile bass into an executable file\n"
-            "  -d, --debug      show some debug info before running file\n");
+            "  -h, --help            show this help message and exit\n"
+            "  -c, --compile         compile bass into an executable file\n"
+            "  -o, --output <path>   path to compiled output\n"
+            "  -d, --debug           show some debug info before running file\n");
 }
+
+typedef struct {
+    const char **data;
+    size_t size;
+    size_t capacity;
+} FileNames;
 
 int main(int argc, char *argv[]) {
     bool debug = false;
     bool compile = false;
-    int files_count = 0;
+    const char *output_path = NULL;
+    FileNames source_files = {0};
 
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "--debug") == 0) || (strcmp(argv[i], "-d") == 0)) {
@@ -81,23 +91,31 @@ int main(int argc, char *argv[]) {
             debug = true;
         } else if ((strcmp(argv[i], "--compile") == 0) || (strcmp(argv[i], "-c") == 0)) {
             compile = true;
+        } else if ((strcmp(argv[i], "--output") == 0) || (strcmp(argv[i], "-o") == 0)) {
+            if (i + 1 > argc) {
+                printf("bass: option `%s` requires a valid path", argv[i]);
+                return 1;
+            }
+            output_path = argv[i + 1];
+            i += 1;
         } else if ((strcmp(argv[i], "--help") == 0) ||
                    (strcmp(argv[i], "-h") == 0)) {
             print_help();
             return 0;
         } else {
-            files_count++;
-            // TODO: consider flags provided after the file in the command line
-            if (!parse_and_interpret(argv[i], debug, compile)) {
-                fprintf(stderr, "bass: failed to run `%s`\n", argv[i]);
-                return 1;
-            }
+            dyn_append(&source_files, argv[i]);
         }
     }
 
-    if (files_count == 0) {
+    if (source_files.size == 0) {
         fprintf(stderr, "bass: no input files provided\n");
         return 1;
+    }
+    for (size_t i = 0; i < source_files.size; i++) {
+        if (!parse_and_interpret(source_files.data[i], debug, compile, output_path)) {
+            fprintf(stderr, "bass: failed to run `%s`\n", source_files.data[i]);
+            return 1;
+        }
     }
 
     return 0;

@@ -2,13 +2,15 @@
 #include "parser.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include "compiler.h"
 
-void compile_exit(FILE *f) {
-    fprintf(f, "\n");
-    fprintf(f, "    mov eax, 1\n");
-    fprintf(f, "    mov ebx, 25\n");
+void compile_exit(FILE *f, const char *reg) {
+    fprintf(f, "\n\n");
+    fprintf(f, "// exit syscall\n");
+    fprintf(f, "    mov rax, 1\n");
+    fprintf(f, "    mov rbx, %s\n", reg);
     fprintf(f, "    int 0x80\n");
 }
 
@@ -41,7 +43,7 @@ bool compile_value_write(FILE *f, OpCode *opcode, Operand *operand) {
                 "opcode `%s`, but got %s: `%.*s`\n"
                 "help: an rvalue was expected but an lvalue was found, check if "
                 "you put a `#` instead of a `r` or `@`\n",
-                opcode->line, opcode->col, OPCODES[opcode->op].name,
+                operand->line, operand->col, OPCODES[opcode->op].name,
                 TOKEN_STRING[TOK_LITERAL_NUM], SV_FORMAT(operand->str));
             return false;
         } break;
@@ -54,6 +56,7 @@ bool compile_value_write(FILE *f, OpCode *opcode, Operand *operand) {
 }
 
 
+// TODO: remove opcode and only take operand
 bool compile_value_set_instruction(FILE *f, const char *instruction, OpCode *opcode, size_t write_index, size_t read_index) {
     fprintf(f, "    %s ", instruction);
     if (!compile_value_write(f, opcode, &opcode->operands[write_index])) return false;
@@ -63,21 +66,34 @@ bool compile_value_set_instruction(FILE *f, const char *instruction, OpCode *opc
     return true;
 }
 
+// TODO: remove opcode and only take operand
+bool compile_mov_value(FILE *f, OpCode *opcode, uint64_t value) {
+    fprintf(f, "    mov ");
+    if (!compile_value_write(f, opcode, &opcode->operands[0])) return false;
+    fprintf(f, ", %ld", value);
+    return true;
+}
+
+// TODO: remove opcode and only take operand
+bool compile_mov_from_str(FILE *f, OpCode *opcode, const char *source) {
+    fprintf(f, "    mov ");
+    if (!compile_value_write(f, opcode, &opcode->operands[0])) return false;
+    fprintf(f, ", %s\n", source);
+    return true;
+}
+
+void compile_instruction_to_str(FILE *f, const char *instruction, const char *dest, Operand *source) {
+    fprintf(f, "    %s %s, ", instruction, dest);
+    compile_value_read(f, source);
+    fprintf(f, "\n");
+}
+
 // TODO: come up with a better name for this function
 bool compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opcode) {
-    int write_index = 1;
-    int read_index = 2;
-
-    // Cant write to these operands
-    if (opcode->operands[1].type == TOK_LITERAL_NUM
-        || opcode->operands[1].type == TOK_LITERAL_CHAR
-        || opcode->operands[1].type == TOK_LITERAL_STR
-        || opcode->operands[1].type == TOK_IDENTIFIER) {
-        write_index = 2;
-        read_index = 1;
-    }
-    if (!compile_value_set_instruction(f, instruction, opcode, write_index, read_index)) return false;
-    if (!compile_value_set_instruction(f, "mov", opcode, 0, write_index)) return false;
+    // TODO: save and restore rcx?
+    compile_instruction_to_str(f, "mov", "rcx", &opcode->operands[1]);
+    compile_instruction_to_str(f, instruction, "rcx", &opcode->operands[2]);
+    if (!compile_mov_from_str(f, opcode, "rcx")) return false;
     return true;
 }
 
@@ -91,43 +107,79 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             if (!compile_value_set_instruction(f, "mov", opcode, 0, 1)) return false;
         } break;
         case OP_ADD: {
-            const char *instruction = "add";
-            // TODO: check for other invalid arguments (string, char, identifiers)
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
-                fprintf(f, "    %s ", instruction);
-                if (!compile_value_write(f, opcode, &opcode->operands[0])) return false;
                 // TODO: check for overflow
-                fprintf(f, ", %d", opcode->operands[1].as_int + opcode->operands[2].as_int);
+                if (!compile_mov_value(f, opcode, opcode->operands[1].as_int + opcode->operands[2].as_int)) return false;
             } else {
-                if (!compile_two_step_instruction(f, instruction, opcode)) return false;
+                if (!compile_two_step_instruction(f, "add", opcode)) return false;
             }
         } break;
         case OP_SUB: {
-            const char *instruction = "sub";
-            // TODO: check for other invalid arguments (string, char, identifiers)
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
-                fprintf(f, "    %s ", instruction);
-                if (!compile_value_write(f, opcode, &opcode->operands[0])) return false;
                 // TODO: check for overflow
-                fprintf(f, ", %d", opcode->operands[1].as_int - opcode->operands[2].as_int);
+                if (!compile_mov_value(f, opcode, opcode->operands[1].as_int - opcode->operands[2].as_int)) return false;
             } else {
-                if (!compile_two_step_instruction(f, instruction, opcode)) return false;
+                if (!compile_two_step_instruction(f, "sub", opcode)) return false;
             }
         } break;
         case OP_MUL: {
-            const char *instruction = "imul";
-            // TODO: check for other invalid arguments (string, char, identifiers)
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
-                fprintf(f, "    %s ", instruction);
-                if (!compile_value_write(f, opcode, &opcode->operands[0])) return false;
                 // TODO: check for overflow
-                fprintf(f, ", %d", opcode->operands[1].as_int * opcode->operands[2].as_int);
+                if (!compile_mov_value(f, opcode, opcode->operands[1].as_int * opcode->operands[2].as_int)) return false;
             } else {
-                if (!compile_two_step_instruction(f, instruction, opcode)) return false;
+                if (!compile_two_step_instruction(f, "imul", opcode)) return false;
             }
         } break;
-        case OP_DIV      : { TODO("OP_DIV: not yet implemented");      }break;
-        case OP_MOD      : { TODO("OP_MOD: not yet implemented");      }break;
+        case OP_DIV: {
+            // div x1 x2 x3
+            if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
+                // TODO: check for overflow and division by zero
+                if (!compile_mov_value(f, opcode, opcode->operands[1].as_int / opcode->operands[2].as_int)) return false;
+            } else {
+                // TODO: save and restore rax and rbx
+                // mov rax, x2
+                compile_instruction_to_str(f, "mov", "rax", &opcode->operands[1]);
+
+                // idiv x3
+                // idiv doesnt support immediates as an operand
+                if (opcode->operands[2].type == TOK_LITERAL_NUM) {
+                    compile_instruction_to_str(f, "mov", "rbx", &opcode->operands[2]);
+                    fprintf(f, "    idiv rbx\n");
+                } else {
+                    fprintf(f, "    idiv ");
+                    compile_value_read(f, &opcode->operands[2]);
+                    fprintf(f, "\n");
+                }
+
+                // mov x1, rax
+                if (!compile_mov_from_str(f, opcode, "rax")) return false;
+            }
+        } break;
+        case OP_MOD: {
+            // div x1 x2 x3
+            if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
+                // TODO: check for overflow and division by zero
+                if (!compile_mov_value(f, opcode, opcode->operands[1].as_int % opcode->operands[2].as_int)) return false;
+            } else {
+                // TODO: save and restore rax, rbx, rdx
+                // mov rax, x2
+                compile_instruction_to_str(f, "mov", "rax", &opcode->operands[1]);
+
+                // idiv x3
+                // idiv doesnt support immediates as an operand
+                if (opcode->operands[2].type == TOK_LITERAL_NUM) {
+                    compile_instruction_to_str(f, "mov", "rbx", &opcode->operands[2]);
+                    fprintf(f, "    idiv rbx\n");
+                } else {
+                    fprintf(f, "    idiv ");
+                    compile_value_read(f, &opcode->operands[2]);
+                    fprintf(f, "\n");
+                }
+
+                // mov x1, rdx (remainder)
+                if (!compile_mov_from_str(f, opcode, "rdx")) return false;
+            }
+        } break;
         case OP_LOAD     : { TODO("OP_LOAD: not yet implemented");     }break;
         case OP_STORE    : { TODO("OP_STORE: not yet implemented");    }break;
         case OP_PRINT    : { TODO("OP_PRINT: not yet implemented");    }break;
@@ -150,8 +202,8 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
     return true;
 }
 
-bool compile(Labels labels, OpCodes opcodes, size_t entry) {
-    FILE *f = fopen("bass-compiled.s", "w");
+bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t entry) {
+    FILE *f = fopen(output_path, "w");
     fprintf(f, ".intel_syntax noprefix\n");
     fprintf(f, ".globl _start\n");
 
@@ -178,7 +230,7 @@ bool compile(Labels labels, OpCodes opcodes, size_t entry) {
         compile_opcode(f, &opcodes.data[j]);
     }
 
-    compile_exit(f);
+    compile_exit(f, "r8");
     fclose(f);
     return true;
 }
