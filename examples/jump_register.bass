@@ -1,5 +1,5 @@
 ; `jump` can be used to jump to any opcode
-; here opcode 7 (the final println) is the target of the jump
+; here the 7th opcode (opcode 6 in 0-indexing), or the final println is the target of the jump
 
 push #6
 println "hello"

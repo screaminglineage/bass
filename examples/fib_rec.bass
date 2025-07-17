@@ -1,4 +1,6 @@
 ; Fibonacci Implemented using recursive calls
+; r1 - 1st argument
+; r3 - return value
 
 fib:
   ; Base Cases
@@ -11,7 +13,7 @@ fib:
   push r1
   sub r1 r1 #1
   call fib
- 
+
 ; fib(n - 2)
   pop r1
   sub r1 r1 #2
@@ -34,4 +36,4 @@ _:
   move r1 #10
   call fib
   println r3
- 
+

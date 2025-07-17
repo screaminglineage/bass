@@ -1,5 +1,6 @@
 ; Writes `123` contiguously into memory Notice that the index is
 ; incremented/decremented by `4` each time to account for the size of an int (32 bit)
+; TODO: change when size is updated to 64 bits
 
 write:
     cmp r0 #40

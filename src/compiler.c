@@ -7,11 +7,10 @@
 #include "compiler.h"
 
 void compile_exit(FILE *f, const char *reg) {
-    fprintf(f, "\n\n");
-    fprintf(f, "// exit syscall\n");
-    fprintf(f, "    mov rax, 1\n");
-    fprintf(f, "    mov rbx, %s\n", reg);
-    fprintf(f, "    int 0x80\n");
+    fprintf(f, "\n\n; exit syscall\n");
+    fprintf(f, "    mov rax, 60\n");
+    fprintf(f, "    mov rdi, %s\n", reg);
+    fprintf(f, "    syscall\n");
 }
 
 void compile_value_read(FILE *f, Operand *operand) {
@@ -26,7 +25,8 @@ void compile_value_read(FILE *f, Operand *operand) {
         case TOK_ADDRESS: { TODO("implement memory read"); } break;
         case TOK_ADDRESS_REG: { TODO("implement indirect register read"); } break;
         default:
-            UNREACHABLE_INFO("invalid operand type for reads");
+            fprintf(stderr, "invalid operand for reads: %s\n", TOKEN_STRING[operand->type]);
+            UNREACHABLE();
     }
 }
 
@@ -53,7 +53,7 @@ void compile_value_set_instruction(FILE *f, const char *instruction, Operand *de
     fprintf(f, "\n");
 }
 
-void compile_mov_value(FILE *f, Operand *operand, uint64_t value) {
+void compile_mov_to_operand(FILE *f, Operand *operand, uint64_t value) {
     fprintf(f, "    mov ");
     compile_value_write(f, operand);
     fprintf(f, ", %ld", value);
@@ -79,6 +79,52 @@ void compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opco
     compile_mov_from_str(f, &opcode->operands[0], "rcx");
 }
 
+void compile_print(FILE *f, Operand *operand, bool add_newline) {
+    fprintf(f, "    push rsp\n");
+    compile_instruction_to_str(f, "mov", "rsi", operand);
+    fprintf(f, "    mov rbx, 10\n");
+
+    if (add_newline) {
+        fprintf(f, "    mov rcx, 1\n");
+        fprintf(f, "    dec rsp\n");
+        fprintf(f, "    mov byte [rsp], 0xA\n");
+    }
+
+    // check if number is negative
+    fprintf(f, "    mov rdi, 0\n");
+    fprintf(f, "    test rsi, rsi\n");
+    fprintf(f, "    jnl non_negative\n");
+    fprintf(f, "    mov rdi, 1\n");
+    fprintf(f, "    neg rsi\n");
+
+    fprintf(f, "non_negative:\n");
+    fprintf(f, "    mov rax, rsi\n");
+    fprintf(f, "num_to_string:\n");
+    fprintf(f, "    xor rdx, rdx\n");
+    fprintf(f, "    div rbx\n");
+    fprintf(f, "    add rdx, '0'\n");
+    fprintf(f, "    inc rcx\n");
+    fprintf(f, "    dec rsp\n");
+    fprintf(f, "    mov [rsp], dl\n");
+    fprintf(f, "    test rax, rax\n");
+    fprintf(f, "    jnz num_to_string\n");
+
+    // add '-' if number was negative
+    fprintf(f, "    cmp rdi, 1\n");
+    fprintf(f, "    jnz write\n");
+    fprintf(f, "    inc rcx\n");
+    fprintf(f, "    dec rsp\n");
+    fprintf(f, "    mov byte [rsp], '-'\n");
+
+    fprintf(f, "write:\n");
+    fprintf(f, "    mov rax, 1\n");
+    fprintf(f, "    mov rdi, 1\n");
+    fprintf(f, "    mov rsi, rsp\n");
+    fprintf(f, "    mov rdx, rcx\n");
+    fprintf(f, "    syscall\n");
+
+    fprintf(f, "pop rsp\n");
+}
 
 bool compile_opcode(FILE *f, OpCode *opcode) {
     switch (opcode->op) {
@@ -91,7 +137,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_ADD: {
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
                 // TODO: check for overflow and return error
-                compile_mov_value(f, &opcode->operands[0], opcode->operands[1].as_int + opcode->operands[2].as_int);
+                compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int + opcode->operands[2].as_int);
             } else {
                 compile_two_step_instruction(f, "add", opcode);
             }
@@ -99,7 +145,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_SUB: {
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
                 // TODO: check for overflow and return error
-                compile_mov_value(f, &opcode->operands[0], opcode->operands[1].as_int - opcode->operands[2].as_int);
+                compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int - opcode->operands[2].as_int);
             } else {
                 compile_two_step_instruction(f, "sub", opcode);
             }
@@ -107,7 +153,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_MUL: {
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
                 // TODO: check for overflow and return error
-                compile_mov_value(f, &opcode->operands[0], opcode->operands[1].as_int * opcode->operands[2].as_int);
+                compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int * opcode->operands[2].as_int);
             } else {
                 compile_two_step_instruction(f, "imul", opcode);
             }
@@ -116,7 +162,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             // div x1 x2 x3
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
                 // TODO: check for overflow and division by zero
-                compile_mov_value(f, &opcode->operands[0], opcode->operands[1].as_int / opcode->operands[2].as_int);
+                compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int / opcode->operands[2].as_int);
             } else {
                 // TODO: save and restore rax and rbx
                 // mov rax, x2
@@ -141,7 +187,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             // div x1 x2 x3
             if ((opcode->operands[1].type == TOK_LITERAL_NUM) && (opcode->operands[2].type == TOK_LITERAL_NUM)) {
                 // TODO: check for overflow and division by zero
-                compile_mov_value(f, &opcode->operands[0], opcode->operands[1].as_int % opcode->operands[2].as_int);
+                compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int % opcode->operands[2].as_int);
             } else {
                 // TODO: save and restore rax, rbx, rdx
                 // mov rax, x2
@@ -164,8 +210,26 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         } break;
         case OP_LOAD     : { TODO("OP_LOAD: not yet implemented");     }break;
         case OP_STORE    : { TODO("OP_STORE: not yet implemented");    }break;
-        case OP_PRINT    : { TODO("OP_PRINT: not yet implemented");    }break;
-        case OP_PRINTLN  : { TODO("OP_PRINTLN: not yet implemented");  }break;
+
+        // TODO: make print a function, as otherwise all labels need to be unique
+        case OP_PRINT: {
+            if (opcode->operands[0].type == TOK_LITERAL_STR) {
+                TODO("printing strings: not yet implemented");
+            } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
+                TODO("printing characters: not yet implemented");
+            } else {
+                compile_print(f, &opcode->operands[0], false);
+            }
+        } break;
+        case OP_PRINTLN: {
+            if (opcode->operands[0].type == TOK_LITERAL_STR) {
+                TODO("printing strings: not yet implemented");
+            } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
+                TODO("printing characters: not yet implemented");
+            } else {
+                compile_print(f, &opcode->operands[0], true);
+            }
+        } break;
         case OP_PRINTB   : { TODO("OP_PRINTB: not yet implemented");   }break;
         case OP_PRINTBLN : { TODO("OP_PRINTBLN: not yet implemented"); }break;
         case OP_READ     : { TODO("OP_READ: not yet implemented");     }break;
@@ -186,8 +250,9 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
 
 bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t entry) {
     FILE *f = fopen(output_path, "w");
-    fprintf(f, ".intel_syntax noprefix\n");
-    fprintf(f, ".globl _start\n");
+    fprintf(f, "section .text\n");
+    fprintf(f, "    global _start\n");
+    fprintf(f, "\n");
 
     size_t i = 0, j = 0;
     while (i < labels.size && j < opcodes.size) {
