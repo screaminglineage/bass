@@ -3,6 +3,15 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef _WIN32
+#error "Compiling on windows is not yet supported"
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
 
 #include "compiler.h"
 #include "constants.h"
@@ -33,6 +42,42 @@ bool parse_file(const char *source_file, bool debug, StringView *sv, OpCodes *op
     return true;
 }
 
+bool run_command(const char *path, char **args) {
+#ifdef _WIN32
+#error "Running commands on windows is not yet supported"
+#else
+    fprintf(stderr, "bass: running: ");
+    for (size_t i = 0; args[i]; i++) {
+        fprintf(stderr, "%s ", args[i]);
+    }
+    fprintf(stderr, "\n");
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+        return false;
+    }
+    if (pid == 0) {
+        if (execvp(path, args) == -1) {
+            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+            return false;
+        }
+    } else {
+        int status;
+        pid_t w = waitpid(pid, &status, 0);
+        if (w == -1) {
+            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+            return false;
+        }
+        if (!WIFEXITED(status)) {
+            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+            return false;
+        }
+    }
+#endif
+    return true;
+}
+
 bool compile_program(Labels labels, OpCodes opcodes, const char *output_file) {
     int entry_label = find_label(&labels, SV("_"));
     if (entry_label == -1) {
@@ -40,7 +85,22 @@ bool compile_program(Labels labels, OpCodes opcodes, const char *output_file) {
     } else {
         entry_label = (size_t)entry_label;
     }
-    if (!compile(output_file, labels, opcodes, entry_label)) return false;
+    if (!compile("bass-compiled.s", labels, opcodes, entry_label)) return false;
+
+    run_command("nasm", (char *[]){
+        "nasm",
+        "-g",
+        "-f", "elf64",
+        "bass-compiled.s",
+        "-o", "bass-compiled.o",
+        NULL
+    });
+    run_command("ld", (char *[]){
+        "ld",
+        "bass-compiled.o",
+        "-o", (char *)output_file,
+        NULL
+    });
     return true;
 }
 
@@ -127,7 +187,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "bass: failed to compile `%s`\n", source_files.data[i]);
                 return 1;
             }
-            fprintf(stderr, "bass: compiled to `%s`\n", output_path);
+            fprintf(stderr, "bass: compiled to: %s\n", output_path);
         } else {
             if (!interpret_program(labels, opcodes)) {
                 fprintf(stderr, "bass: failed to run `%s`\n", source_files.data[i]);

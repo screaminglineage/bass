@@ -22,6 +22,9 @@ void compile_value_read(FILE *f, Operand *operand) {
         case TOK_LITERAL_NUM: {
             fprintf(f, "%d", operand->as_int);
         } break;
+        case TOK_LITERAL_CHAR: {
+            fprintf(f, "%d", operand->as_int);
+        } break;
         case TOK_ADDRESS: { TODO("implement memory read"); } break;
         case TOK_ADDRESS_REG: { TODO("implement indirect register read"); } break;
         default:
@@ -40,7 +43,8 @@ void compile_value_write(FILE *f, Operand *operand) {
         case TOK_ADDRESS_REG: { TODO("implement indirect register write"); } break;
         case TOK_LITERAL_NUM:
         default:
-            UNREACHABLE_INFO("invalid operand type for writes");
+            fprintf(stderr, "invalid operand for writes: %s\n", TOKEN_STRING[operand->type]);
+            UNREACHABLE();
     }
 }
 
@@ -79,9 +83,27 @@ void compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opco
     compile_mov_from_str(f, &opcode->operands[0], "rcx");
 }
 
+void compile_print_char(FILE *f, Operand *operand, bool add_newline) {
+    fprintf(f, "    mov rbp, rsp\n");
+
+    if (add_newline) {
+        fprintf(f, "    dec rsp\n");
+        fprintf(f, "    mov byte [rsp], 0xA\n");
+    }
+    fprintf(f, "    dec rsp\n");
+    compile_instruction_to_str(f, "mov byte", "[rsp]", operand);
+
+    fprintf(f, "    mov rax, 1\n");
+    fprintf(f, "    mov rdi, 1\n");
+    fprintf(f, "    mov rsi, rsp\n");
+    fprintf(f, "    mov rdx, %d\n", add_newline? 2: 1);
+    fprintf(f, "    syscall\n");
+
+    fprintf(f, "    mov rsp, rbp\n");
+}
+
 void compile_print_int(FILE *f, Operand *operand, bool add_newline) {
     // TODO: make print a function and fix this temporary label hack
-    fprintf(f, "\n; print opcode\n");
     static int print_count = 0;
     fprintf(f, "print_num_%d:\n", print_count++);
 
@@ -218,19 +240,21 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_STORE    : { TODO("OP_STORE: not yet implemented");    }break;
 
         case OP_PRINT: {
+            fprintf(f, "\n; print opcode\n");
             if (opcode->operands[0].type == TOK_LITERAL_STR) {
                 TODO("printing strings: not yet implemented");
             } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
-                TODO("printing characters: not yet implemented");
+                compile_print_char(f, &opcode->operands[0], false);
             } else {
                 compile_print_int(f, &opcode->operands[0], false);
             }
         } break;
         case OP_PRINTLN: {
+            fprintf(f, "\n; print opcode\n");
             if (opcode->operands[0].type == TOK_LITERAL_STR) {
                 TODO("printing strings: not yet implemented");
             } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
-                TODO("printing characters: not yet implemented");
+                compile_print_char(f, &opcode->operands[0], true);
             } else {
                 compile_print_int(f, &opcode->operands[0], true);
             }
@@ -238,8 +262,16 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_PRINTB   : { TODO("OP_PRINTB: not yet implemented");   }break;
         case OP_PRINTBLN : { TODO("OP_PRINTBLN: not yet implemented"); }break;
         case OP_READ     : { TODO("OP_READ: not yet implemented");     }break;
-        case OP_PUSH     : { TODO("OP_PUSH: not yet implemented");     }break;
-        case OP_POP      : { TODO("OP_POP: not yet implemented");      }break;
+        case OP_PUSH: {
+            fprintf(f, "    push ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
+        } break;
+        case OP_POP: { 
+            fprintf(f, "    pop ");
+            compile_value_write(f, &opcode->operands[0]);
+            fprintf(f, "\n");
+        } break;
         case OP_CMP: {
             if ((opcode->operands[0].type == TOK_LITERAL_NUM) && (opcode->operands[1].type == TOK_LITERAL_NUM)) {
                 compile_instruction_to_str(f, "mov", "rax", &opcode->operands[0]);
@@ -254,19 +286,38 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             }
         } break;
         case OP_JUMP: {
+            if (opcode->operands[0].type != TOK_IDENTIFIER) {
+                TODO("OP_JUMP: implement jumping to non labels");
+            }
             fprintf(f, "    jmp %.*s\n", SV_FORMAT(opcode->operands[0].str));
         } break;
         case OP_JUMPZ: {
+            if (opcode->operands[0].type != TOK_IDENTIFIER) {
+                TODO("OP_JUMPZ: implement jumping to non labels");
+            }
             fprintf(f, "    jz %.*s\n", SV_FORMAT(opcode->operands[0].str));
         }break;
         case OP_JUMPG: {
+            if (opcode->operands[0].type != TOK_IDENTIFIER) {
+                TODO("OP_JUMPG: implement jumping to non labels");
+            }
             fprintf(f, "    jg %.*s\n", SV_FORMAT(opcode->operands[0].str));
         }break;
         case OP_JUMPL: {
+            if (opcode->operands[0].type != TOK_IDENTIFIER) {
+                TODO("OP_JUMPL: implement jumping to non labels");
+            }
             fprintf(f, "    jl %.*s\n", SV_FORMAT(opcode->operands[0].str));
         } break;
-        case OP_CALL     : { TODO("OP_CALL: not yet implemented");     }break;
-        case OP_RETURN   : { TODO("OP_RETURN: not yet implemented");   }break;
+        case OP_CALL: {
+            if (opcode->operands[0].type != TOK_IDENTIFIER) {
+                TODO("OP_CALL: implement jumping to non labels");
+            }
+            fprintf(f, "    call %.*s\n", SV_FORMAT(opcode->operands[0].str));
+        } break;
+        case OP_RETURN: { 
+            fprintf(f, "    ret\n");
+        } break;
         case OP_COUNT:
             UNREACHABLE_INFO("OP_COUNT is not a valid opcode");
     }
@@ -281,17 +332,16 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t ent
 
     // TODO: make sure that r8-r15 are all set to 0
 
-    // putting entrypoint before code generation if its the default one
-    if (entry == 0) {
-        fprintf(f, "_start:\n");
-    }
-
     size_t i = 0, j = 0;
     while (i < labels.size && j < opcodes.size) {
         while (i < labels.size && j == labels.data[i].index) {
-            fprintf(f, "%.*s: ; (opcode: %s)\n",
-                    SV_FORMAT(labels.data[i].name),
-                    OPCODES[opcodes.data[labels.data[i].index].op].name);
+            if (entry == i) {
+                fprintf(f, "_start:\n");
+            } else {
+                fprintf(f, "%.*s: ; (opcode: %s)\n",
+                        SV_FORMAT(labels.data[i].name),
+                        OPCODES[opcodes.data[labels.data[i].index].op].name);
+            }
             i++;
         }
         compile_opcode(f, &opcodes.data[j]);
