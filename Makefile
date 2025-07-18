@@ -19,10 +19,6 @@ bass: src/*.c src/*.h
 test.bass:
 	touch $@
 	
-.PHONY: compile
-compile: bass test.bass
-	./bass -c test.bass
-
 bass-compiled: bass test.bass
 	./bass -c test.bass -o bass-compiled.s
 	nasm -f elf64 -g -o bass-compiled.o bass-compiled.s && ld bass-compiled.o -o bass-compiled

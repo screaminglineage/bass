@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "compiler.h"
 #include "constants.h"
@@ -9,54 +10,55 @@
 #include "parser.h"
 #include "utils.h"
 
-// TODO: rename this function as it also compiles
-bool parse_and_interpret(const char *source_file, bool debug, bool compile_file, const char *output_path) {
-    StringView sv;
-    if (!read_to_string(source_file, &sv)) {
+bool parse_file(const char *source_file, bool debug, StringView *sv, OpCodes *opcodes, Labels *labels) {
+    if (!read_to_string(source_file, sv)) {
         return false;
     }
 
     Parser p;
-    parser_init(&p, sv);
-    OpCodes opcodes = {0};
-    Labels labels = {0};
-    if (!parse(&p, &opcodes, &labels)) {
-        free((void *)sv.data);
+    parser_init(&p, *sv);
+    if (!parse(&p, opcodes, labels)) {
+        free((void *)sv->data);
         return false;
     }
 
     if (debug) {
         printf("Opcodes:\n");
-        for (size_t i = 0; i < opcodes.size; i++) {
-            display_opcode(opcodes.data[i]);
+        for (size_t i = 0; i < opcodes->size; i++) {
+            display_opcode(opcodes->data[i]);
         }
         printf("\nLabels:\n");
-        display_labels(labels);
+        display_labels(*labels);
     }
+    return true;
+}
 
+bool compile_program(Labels labels, OpCodes opcodes, const char *output_file) {
     int entry_label = find_label(&labels, SV("_"));
-    // TODO: move parse, compile, and interpret into separate functions
-    if (compile_file) {
-        if (output_path == NULL) output_path = DEFAULT_COMPILER_OUTPUT;
-        return compile(output_path, labels, opcodes, (entry_label == -1)? 0: (size_t)entry_label);
+    if (entry_label == -1) {
+        entry_label = 0;
+    } else {
+        entry_label = (size_t)entry_label;
     }
+    if (!compile(output_file, labels, opcodes, entry_label)) return false;
+    return true;
+}
 
+
+bool interpret_program(Labels labels, OpCodes opcodes) {
     State state;
     if (!state_init(&state)) {
         printf("bass: failed to allocate enough memory, exiting\n");
-        free((void *)sv.data);
         return false;
     }
+    int entry_label = find_label(&labels, SV("_"));
     state.reg_pc = (entry_label == -1)? 0: labels.data[entry_label].index;
 
     if (!interpret(&state, opcodes)) {
-        free((void *)sv.data);
         free(state.memory);
         return false;
     }
-    free((void *)sv.data);
     free(state.memory);
-    free(opcodes.data);
     return true;
 }
 
@@ -80,7 +82,7 @@ typedef struct {
 int main(int argc, char *argv[]) {
     bool debug = false;
     bool compile = false;
-    const char *output_path = NULL;
+    const char *output_path = DEFAULT_COMPILER_OUTPUT;
     FileNames source_files = {0};
 
     for (int i = 1; i < argc; i++) {
@@ -111,12 +113,34 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "bass: no input files provided\n");
         return 1;
     }
+
+    OpCodes opcodes = {0};
+    Labels labels = {0};
+
     for (size_t i = 0; i < source_files.size; i++) {
-        if (!parse_and_interpret(source_files.data[i], debug, compile, output_path)) {
-            fprintf(stderr, "bass: failed to run `%s`\n", source_files.data[i]);
-            return 1;
+        StringView sv = {0};
+        if (!parse_file(source_files.data[i], debug, &sv, &opcodes, &labels)) return 1;
+
+        if (compile) {
+            // TODO: currently overwrites previous files when compiling multiple files
+            if (!compile_program(labels, opcodes, output_path)) {
+                fprintf(stderr, "bass: failed to compile `%s`\n", source_files.data[i]);
+                return 1;
+            }
+            fprintf(stderr, "bass: compiled to `%s`\n", output_path);
+        } else {
+            if (!interpret_program(labels, opcodes)) {
+                fprintf(stderr, "bass: failed to run `%s`\n", source_files.data[i]);
+                return 1;
+            }
         }
+        // TODO: use a string builder instead to not have to free each iteration
+        free((void*)sv.data);
+        opcodes.size = 0;
+        labels.size = 0;
     }
 
+    free(opcodes.data);
+    free(labels.data);
     return 0;
 }
