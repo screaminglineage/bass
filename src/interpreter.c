@@ -103,6 +103,7 @@ static inline int eval_jump(State *state, OpCode *opcode) {
                : eval_int(state, opcode->operands[0]);
 }
 
+// TODO: set flags after operations other than cmp
 bool execute_opcode(State *state, OpCode *opcode) {
     switch (opcode->op) {
     case OP_NO: break;

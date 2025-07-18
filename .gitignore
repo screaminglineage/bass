@@ -1,3 +1,5 @@
+*.s
+*.o
 bass*
 test*
 .cache/*

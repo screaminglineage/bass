@@ -6,10 +6,10 @@
 #include <stdio.h>
 #include "compiler.h"
 
-void compile_exit(FILE *f, const char *reg) {
+void compile_exit(FILE *f) {
     fprintf(f, "\n\n; exit syscall\n");
     fprintf(f, "    mov rax, 60\n");
-    fprintf(f, "    mov rdi, %s\n", reg);
+    fprintf(f, "    mov rdi, 0\n");
     fprintf(f, "    syscall\n");
 }
 
@@ -79,8 +79,14 @@ void compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opco
     compile_mov_from_str(f, &opcode->operands[0], "rcx");
 }
 
-void compile_print(FILE *f, Operand *operand, bool add_newline) {
-    fprintf(f, "    push rsp\n");
+void compile_print_int(FILE *f, Operand *operand, bool add_newline) {
+    // TODO: make print a function and fix this temporary label hack
+    fprintf(f, "\n; print opcode\n");
+    static int print_count = 0;
+    fprintf(f, "print_num_%d:\n", print_count++);
+
+    // TODO: check if this can be done better
+    fprintf(f, "    mov rbp, rsp\n");
     compile_instruction_to_str(f, "mov", "rsi", operand);
     fprintf(f, "    mov rbx, 10\n");
 
@@ -93,13 +99,13 @@ void compile_print(FILE *f, Operand *operand, bool add_newline) {
     // check if number is negative
     fprintf(f, "    mov rdi, 0\n");
     fprintf(f, "    test rsi, rsi\n");
-    fprintf(f, "    jnl non_negative\n");
+    fprintf(f, "    jnl .non_negative\n");
     fprintf(f, "    mov rdi, 1\n");
     fprintf(f, "    neg rsi\n");
 
-    fprintf(f, "non_negative:\n");
+    fprintf(f, ".non_negative:\n");
     fprintf(f, "    mov rax, rsi\n");
-    fprintf(f, "num_to_string:\n");
+    fprintf(f, ".num_to_string:\n");
     fprintf(f, "    xor rdx, rdx\n");
     fprintf(f, "    div rbx\n");
     fprintf(f, "    add rdx, '0'\n");
@@ -107,23 +113,23 @@ void compile_print(FILE *f, Operand *operand, bool add_newline) {
     fprintf(f, "    dec rsp\n");
     fprintf(f, "    mov [rsp], dl\n");
     fprintf(f, "    test rax, rax\n");
-    fprintf(f, "    jnz num_to_string\n");
+    fprintf(f, "    jnz .num_to_string\n");
 
     // add '-' if number was negative
     fprintf(f, "    cmp rdi, 1\n");
-    fprintf(f, "    jnz write\n");
+    fprintf(f, "    jnz .write\n");
     fprintf(f, "    inc rcx\n");
     fprintf(f, "    dec rsp\n");
     fprintf(f, "    mov byte [rsp], '-'\n");
 
-    fprintf(f, "write:\n");
+    fprintf(f, ".write:\n");
     fprintf(f, "    mov rax, 1\n");
     fprintf(f, "    mov rdi, 1\n");
     fprintf(f, "    mov rsi, rsp\n");
     fprintf(f, "    mov rdx, rcx\n");
     fprintf(f, "    syscall\n");
 
-    fprintf(f, "pop rsp\n");
+    fprintf(f, "    mov rsp, rbp\n\n");
 }
 
 bool compile_opcode(FILE *f, OpCode *opcode) {
@@ -211,14 +217,13 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_LOAD     : { TODO("OP_LOAD: not yet implemented");     }break;
         case OP_STORE    : { TODO("OP_STORE: not yet implemented");    }break;
 
-        // TODO: make print a function, as otherwise all labels need to be unique
         case OP_PRINT: {
             if (opcode->operands[0].type == TOK_LITERAL_STR) {
                 TODO("printing strings: not yet implemented");
             } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
                 TODO("printing characters: not yet implemented");
             } else {
-                compile_print(f, &opcode->operands[0], false);
+                compile_print_int(f, &opcode->operands[0], false);
             }
         } break;
         case OP_PRINTLN: {
@@ -227,7 +232,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
                 TODO("printing characters: not yet implemented");
             } else {
-                compile_print(f, &opcode->operands[0], true);
+                compile_print_int(f, &opcode->operands[0], true);
             }
         } break;
         case OP_PRINTB   : { TODO("OP_PRINTB: not yet implemented");   }break;
@@ -235,11 +240,31 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
         case OP_READ     : { TODO("OP_READ: not yet implemented");     }break;
         case OP_PUSH     : { TODO("OP_PUSH: not yet implemented");     }break;
         case OP_POP      : { TODO("OP_POP: not yet implemented");      }break;
-        case OP_CMP      : { TODO("OP_CMP: not yet implemented");      }break;
-        case OP_JUMP     : { TODO("OP_JUMP: not yet implemented");     }break;
-        case OP_JUMPZ    : { TODO("OP_JUMPZ: not yet implemented");    }break;
-        case OP_JUMPG    : { TODO("OP_JUMPG: not yet implemented");    }break;
-        case OP_JUMPL    : { TODO("OP_JUMPL: not yet implemented");    }break;
+        case OP_CMP: {
+            if ((opcode->operands[0].type == TOK_LITERAL_NUM) && (opcode->operands[1].type == TOK_LITERAL_NUM)) {
+                compile_instruction_to_str(f, "mov", "rax", &opcode->operands[0]);
+                compile_instruction_to_str(f, "mov", "rbx", &opcode->operands[1]);
+                fprintf(f, "    cmp rax, rbx\n");
+            } else {
+                fprintf(f, "    cmp ");
+                compile_value_read(f, &opcode->operands[0]);
+                fprintf(f, ", ");
+                compile_value_read(f, &opcode->operands[1]);
+                fprintf(f, "\n");
+            }
+        } break;
+        case OP_JUMP: {
+            fprintf(f, "    jmp %.*s\n", SV_FORMAT(opcode->operands[0].str));
+        } break;
+        case OP_JUMPZ: {
+            fprintf(f, "    jz %.*s\n", SV_FORMAT(opcode->operands[0].str));
+        }break;
+        case OP_JUMPG: {
+            fprintf(f, "    jg %.*s\n", SV_FORMAT(opcode->operands[0].str));
+        }break;
+        case OP_JUMPL: {
+            fprintf(f, "    jl %.*s\n", SV_FORMAT(opcode->operands[0].str));
+        } break;
         case OP_CALL     : { TODO("OP_CALL: not yet implemented");     }break;
         case OP_RETURN   : { TODO("OP_RETURN: not yet implemented");   }break;
         case OP_COUNT:
@@ -254,20 +279,29 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t ent
     fprintf(f, "    global _start\n");
     fprintf(f, "\n");
 
+    // TODO: make sure that r8-r15 are all set to 0
+
+    // putting entrypoint before code generation if its the default one
+    if (entry == 0) {
+        fprintf(f, "_start:\n");
+    }
+
     size_t i = 0, j = 0;
     while (i < labels.size && j < opcodes.size) {
         while (i < labels.size && j == labels.data[i].index) {
-            if (i == entry) {
-                fprintf(f, "_start:\n");
-            }
-            fprintf(f, "%.*s: ; (opcode: %zu)\n", SV_FORMAT(labels.data[i].name), labels.data[i].index);
+            fprintf(f, "%.*s: ; (opcode: %s)\n",
+                    SV_FORMAT(labels.data[i].name),
+                    OPCODES[opcodes.data[labels.data[i].index].op].name);
             i++;
         }
         compile_opcode(f, &opcodes.data[j]);
         j++;
     }
+
     for (; i < labels.size; i++) {
-        fprintf(f, "%.*s: ; (opcode: %zu)\n", SV_FORMAT(labels.data[i].name), labels.data[i].index);
+        fprintf(f, "%.*s: ; (opcode: %s)\n",
+                SV_FORMAT(labels.data[i].name),
+                OPCODES[opcodes.data[labels.data[i].index].op].name);
     }
 
     if (i == entry) {
@@ -277,7 +311,7 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t ent
         compile_opcode(f, &opcodes.data[j]);
     }
 
-    compile_exit(f, "r8");
+    compile_exit(f);
     fclose(f);
     return true;
 }

@@ -1,0 +1,32 @@
+; FizzBuzz from 1 to 100
+
+move r1 #1
+move r0 #100
+
+fizz:
+    mod r2 r1 #3
+    cmp r2 #0
+    jumpg buzz
+    print "Fizz"
+    move r3 #1
+
+buzz:
+    mod r2 r1 #5
+    cmp r2 #0
+    jumpg number
+    print "Buzz"
+    move r3 #1
+
+number:
+    cmp r3 #0
+    jumpg next
+    print r1
+
+next:
+    print '\n'
+    move r3 #0
+    add r1 r1 #1
+
+    cmp r1 r0
+    jumpl fizz
+
