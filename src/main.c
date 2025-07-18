@@ -79,13 +79,7 @@ bool run_command(const char *path, char **args) {
 }
 
 bool compile_program(Labels labels, OpCodes opcodes, const char *output_file) {
-    int entry_label = find_label(&labels, SV("_"));
-    if (entry_label == -1) {
-        entry_label = 0;
-    } else {
-        entry_label = (size_t)entry_label;
-    }
-    if (!compile("bass-compiled.s", labels, opcodes, entry_label)) return false;
+    if (!compile("bass-compiled.s", labels, opcodes)) return false;
 
     run_command("nasm", (char *[]){
         "nasm",

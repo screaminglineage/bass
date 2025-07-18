@@ -182,9 +182,16 @@ bool next_token(Parser *parser, Token *token) {
             }
         }
         while (peek(parser) == ';') {
-            while ((next(parser)) != '\n');
-            parser->line_start = parser->end;
-            parser->line += 1;
+            while (true) {
+                current = next(parser);
+                if (current == '\0') break;
+
+                if (current == '\n') {
+                    parser->line_start = parser->end;
+                    parser->line += 1;
+                    break;
+                }
+            }
         }
     } while(is_space(peek(parser)));
     parser->start = parser->end;

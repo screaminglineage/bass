@@ -15,6 +15,13 @@ void compile_exit(FILE *f) {
 
 void compile_value_read(FILE *f, Operand *operand) {
     switch (operand->type) {
+        case TOK_IDENTIFIER: {
+            if (string_view_eq(operand->str, SV("_"))) {
+                fprintf(f, "_start");
+            } else {
+                fprintf(f, "%.*s", SV_FORMAT(operand->str));
+            }
+        } break;
         case TOK_REGISTER: {
             int x86_64_register = operand->as_int + 8;
             fprintf(f, "r%d", x86_64_register);
@@ -84,6 +91,7 @@ void compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opco
 }
 
 void compile_print_char(FILE *f, Operand *operand, bool add_newline) {
+    // TODO: save and restore rbp?
     fprintf(f, "    mov rbp, rsp\n");
 
     if (add_newline) {
@@ -111,9 +119,10 @@ void compile_print_int(FILE *f, Operand *operand, bool add_newline) {
     fprintf(f, "    mov rbp, rsp\n");
     compile_instruction_to_str(f, "mov", "rsi", operand);
     fprintf(f, "    mov rbx, 10\n");
+    fprintf(f, "    mov rcx, 0\n");
 
     if (add_newline) {
-        fprintf(f, "    mov rcx, 1\n");
+        fprintf(f, "    inc rcx\n");
         fprintf(f, "    dec rsp\n");
         fprintf(f, "    mov byte [rsp], 0xA\n");
     }
@@ -193,6 +202,8 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int / opcode->operands[2].as_int);
             } else {
                 // TODO: save and restore rax and rbx
+                // rdx needs to be zeroed
+                fprintf(f, "    mov rdx, 0\n");
                 // mov rax, x2
                 compile_instruction_to_str(f, "mov", "rax", &opcode->operands[1]);
 
@@ -218,6 +229,8 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int % opcode->operands[2].as_int);
             } else {
                 // TODO: save and restore rax, rbx, rdx
+                // rdx needs to be zeroed
+                fprintf(f, "    mov rdx, 0\n");
                 // mov rax, x2
                 compile_instruction_to_str(f, "mov", "rax", &opcode->operands[1]);
 
@@ -289,31 +302,41 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             if (opcode->operands[0].type != TOK_IDENTIFIER) {
                 TODO("OP_JUMP: implement jumping to non labels");
             }
-            fprintf(f, "    jmp %.*s\n", SV_FORMAT(opcode->operands[0].str));
+            fprintf(f, "    jmp ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
         } break;
         case OP_JUMPZ: {
             if (opcode->operands[0].type != TOK_IDENTIFIER) {
                 TODO("OP_JUMPZ: implement jumping to non labels");
             }
-            fprintf(f, "    jz %.*s\n", SV_FORMAT(opcode->operands[0].str));
+            fprintf(f, "    jz ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
         }break;
         case OP_JUMPG: {
             if (opcode->operands[0].type != TOK_IDENTIFIER) {
                 TODO("OP_JUMPG: implement jumping to non labels");
             }
-            fprintf(f, "    jg %.*s\n", SV_FORMAT(opcode->operands[0].str));
+            fprintf(f, "    jg ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
         }break;
         case OP_JUMPL: {
             if (opcode->operands[0].type != TOK_IDENTIFIER) {
                 TODO("OP_JUMPL: implement jumping to non labels");
             }
-            fprintf(f, "    jl %.*s\n", SV_FORMAT(opcode->operands[0].str));
+            fprintf(f, "    jl ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
         } break;
         case OP_CALL: {
             if (opcode->operands[0].type != TOK_IDENTIFIER) {
                 TODO("OP_CALL: implement jumping to non labels");
             }
-            fprintf(f, "    call %.*s\n", SV_FORMAT(opcode->operands[0].str));
+            fprintf(f, "    call ");
+            compile_value_read(f, &opcode->operands[0]);
+            fprintf(f, "\n");
         } break;
         case OP_RETURN: { 
             fprintf(f, "    ret\n");
@@ -324,7 +347,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
     return true;
 }
 
-bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t entry) {
+bool compile(const char *output_path, Labels labels, OpCodes opcodes) {
     FILE *f = fopen(output_path, "w");
     fprintf(f, "section .text\n");
     fprintf(f, "    global _start\n");
@@ -332,10 +355,16 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t ent
 
     // TODO: make sure that r8-r15 are all set to 0
 
+    int entry = find_label(&labels, SV("_"));
+    if (entry == -1) {
+        fprintf(f, "_start:\n");
+    }
+    size_t entry_index = entry;
+
     size_t i = 0, j = 0;
     while (i < labels.size && j < opcodes.size) {
         while (i < labels.size && j == labels.data[i].index) {
-            if (entry == i) {
+            if (i == entry_index) {
                 fprintf(f, "_start:\n");
             } else {
                 fprintf(f, "%.*s: ; (opcode: %s)\n",
@@ -349,14 +378,15 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes, size_t ent
     }
 
     for (; i < labels.size; i++) {
-        fprintf(f, "%.*s: ; (opcode: %s)\n",
-                SV_FORMAT(labels.data[i].name),
-                OPCODES[opcodes.data[labels.data[i].index].op].name);
+        if (i == entry_index) {
+            fprintf(f, "_start:\n");
+        } else {
+            fprintf(f, "%.*s: ; (opcode: %s)\n",
+                    SV_FORMAT(labels.data[i].name),
+                    OPCODES[opcodes.data[labels.data[i].index].op].name);
+        }
     }
 
-    if (i == entry) {
-        fprintf(f, "_start:\n");
-    }
     for (; j < opcodes.size; j++) {
         compile_opcode(f, &opcodes.data[j]);
     }
