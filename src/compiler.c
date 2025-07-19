@@ -6,12 +6,6 @@
 #include <stdio.h>
 #include "compiler.h"
 
-void compile_exit(FILE *f) {
-    fprintf(f, "\n\n; exit syscall\n");
-    fprintf(f, "    mov rax, 60\n");
-    fprintf(f, "    mov rdi, 0\n");
-    fprintf(f, "    syscall\n");
-}
 
 void compile_value_read(FILE *f, Operand *operand) {
     switch (operand->type) {
@@ -32,8 +26,13 @@ void compile_value_read(FILE *f, Operand *operand) {
         case TOK_LITERAL_CHAR: {
             fprintf(f, "%d", operand->as_int);
         } break;
-        case TOK_ADDRESS: { TODO("implement memory read"); } break;
-        case TOK_ADDRESS_REG: { TODO("implement indirect register read"); } break;
+        case TOK_ADDRESS: {
+            fprintf(f, "[%d]", operand->as_int);
+        } break;
+        case TOK_ADDRESS_REG: {
+            int x86_64_register = operand->as_int + 8;
+            fprintf(f, "[r%d]", x86_64_register);
+        } break;
         default:
             fprintf(stderr, "invalid operand for reads: %s\n", TOKEN_STRING[operand->type]);
             UNREACHABLE();
@@ -46,8 +45,15 @@ void compile_value_write(FILE *f, Operand *operand) {
             int x86_64_register = operand->as_int + 8;
             fprintf(f, "r%d", x86_64_register);
         } break;
-        case TOK_ADDRESS: { TODO("implement memory write"); } break;
-        case TOK_ADDRESS_REG: { TODO("implement indirect register write"); } break;
+        case TOK_ADDRESS: {
+            // TODO: change this to qword when updating int to 64 bit
+            fprintf(f, "dword [%d]", operand->as_int);
+        } break;
+        case TOK_ADDRESS_REG: {
+            int x86_64_register = operand->as_int + 8;
+            // TODO: change this to qword when updating int to 64 bit
+            fprintf(f, "dword [r%d]", x86_64_register);
+        } break;
         case TOK_LITERAL_NUM:
         default:
             fprintf(stderr, "invalid operand for writes: %s\n", TOKEN_STRING[operand->type]);
@@ -163,6 +169,39 @@ void compile_print_int(FILE *f, Operand *operand, bool add_newline) {
     fprintf(f, "    mov rsp, rbp\n\n");
 }
 
+
+void compile_read_stdin(FILE *f, Operand *operand_0, Operand *operand_1) {
+    // TODO: make print a function and fix this temporary label hack
+    static int read_count = 0;
+
+    fprintf(f, "    mov rax, 0\n");
+    fprintf(f, "    mov rdi, 0\n");
+    compile_instruction_to_str(f, "mov", "rsi", operand_0);
+    compile_instruction_to_str(f, "mov", "rdx", operand_1);
+    fprintf(f, "    syscall\n");
+
+    // replacing the first newline with a '\0'
+    compile_instruction_to_str(f, "mov", "rax", operand_0);
+    fprintf(f, ".read_loop_%d:\n", read_count);
+    fprintf(f, "    cmp byte [rax], 0xA\n");
+    fprintf(f, "    jz .read_out_%d\n", read_count);
+    fprintf(f, "    inc rax\n");
+    fprintf(f, "    jmp .read_loop_%d\n", read_count);
+    fprintf(f, ".read_out_%d:\n", read_count);
+    fprintf(f, "    mov byte [rax], 0\n");
+
+    read_count++;
+}
+
+void compile_exit_syscall(FILE *f) {
+    fprintf(f, "\n\n; exit syscall\n");
+    fprintf(f, "    mov rax, 60\n");
+    fprintf(f, "    mov rdi, 0\n");
+    fprintf(f, "    syscall\n");
+}
+
+
+// TODO: not all x86 instructions support memory operands
 bool compile_opcode(FILE *f, OpCode *opcode) {
     switch (opcode->op) {
         case OP_NO: {
@@ -263,7 +302,7 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
             }
         } break;
         case OP_PRINTLN: {
-            fprintf(f, "\n; print opcode\n");
+            fprintf(f, "\n; println opcode\n");
             if (opcode->operands[0].type == TOK_LITERAL_STR) {
                 TODO("printing strings: not yet implemented");
             } else if (opcode->operands[0].type == TOK_LITERAL_CHAR) {
@@ -272,9 +311,37 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 compile_print_int(f, &opcode->operands[0], true);
             }
         } break;
-        case OP_PRINTB   : { TODO("OP_PRINTB: not yet implemented");   }break;
-        case OP_PRINTBLN : { TODO("OP_PRINTBLN: not yet implemented"); }break;
-        case OP_READ     : { TODO("OP_READ: not yet implemented");     }break;
+        case OP_PRINTB: {
+            fprintf(f, "\n; printb opcode\n");
+            fprintf(f, "    mov rax, 1\n");
+            fprintf(f, "    mov rdi, 1\n");
+            compile_instruction_to_str(f, "mov", "rsi", &opcode->operands[0]);
+            compile_instruction_to_str(f, "mov", "rdx", &opcode->operands[1]);
+            fprintf(f, "    syscall\n");
+        } break;
+        case OP_PRINTBLN: {
+            fprintf(f, "\n; printbln opcode\n");
+            fprintf(f, "    mov rax, 1\n");
+            fprintf(f, "    mov rdi, 1\n");
+            compile_instruction_to_str(f, "mov", "rsi", &opcode->operands[0]);
+            compile_instruction_to_str(f, "mov", "rdx", &opcode->operands[1]);
+            fprintf(f, "    syscall\n");
+
+            // writing a newline
+            fprintf(f, "    mov rbp, rsp\n");
+            fprintf(f, "    dec rsp\n");
+            fprintf(f, "    mov byte [rsp], 0xA\n");
+            fprintf(f, "    mov rax, 1\n");
+            fprintf(f, "    mov rdi, 1\n");
+            fprintf(f, "    mov rsi, rsp\n");
+            fprintf(f, "    mov rdx, 1\n");
+            fprintf(f, "    syscall\n");
+            fprintf(f, "    mov rsp, rbp\n");
+        } break;
+        case OP_READ: {
+            fprintf(f, "\n; read opcode\n");
+            compile_read_stdin(f, &opcode->operands[0], &opcode->operands[1]);
+        } break;
         case OP_PUSH: {
             fprintf(f, "    push ");
             compile_value_read(f, &opcode->operands[0]);
@@ -290,6 +357,10 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 compile_instruction_to_str(f, "mov", "rax", &opcode->operands[0]);
                 compile_instruction_to_str(f, "mov", "rbx", &opcode->operands[1]);
                 fprintf(f, "    cmp rax, rbx\n");
+            } else if (opcode->operands[0].type == TOK_ADDRESS || opcode->operands[0].type == TOK_ADDRESS_REG) {
+                // TODO: save and restore rax?
+                compile_instruction_to_str(f, "mov", "rax", &opcode->operands[0]);
+                compile_instruction_to_str(f, "cmp", "rax", &opcode->operands[1]);
             } else {
                 fprintf(f, "    cmp ");
                 compile_value_read(f, &opcode->operands[0]);
@@ -354,6 +425,7 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes) {
     fprintf(f, "\n");
 
     // TODO: make sure that r8-r15 are all set to 0
+    // TODO: allocate memory for `@` instructions
 
     int entry = find_label(&labels, SV("_"));
     if (entry == -1) {
@@ -391,7 +463,7 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes) {
         compile_opcode(f, &opcodes.data[j]);
     }
 
-    compile_exit(f);
+    compile_exit_syscall(f);
     fclose(f);
     return true;
 }

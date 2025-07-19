@@ -54,23 +54,26 @@ bool run_command(const char *path, char **args) {
 
     pid_t pid = fork();
     if (pid == -1) {
-        fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+        fprintf(stderr, "bass: failed to run `%s`: %s\n", path, strerror(errno));
         return false;
     }
     if (pid == 0) {
         if (execvp(path, args) == -1) {
-            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+            fprintf(stderr, "bass: failed to run `%s`: %s\n", path, strerror(errno));
             return false;
         }
     } else {
         int status;
-        pid_t w = waitpid(pid, &status, 0);
-        if (w == -1) {
-            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+        if (waitpid(pid, &status, 0) == -1) {
+            fprintf(stderr, "bass: failed to run `%s`: %s\n", path, strerror(errno));
             return false;
         }
         if (!WIFEXITED(status)) {
-            fprintf(stderr, "bass: failed to run `%s`: %s", path, strerror(errno));
+            fprintf(stderr, "bass: failed to run `%s`: %s\n", path, strerror(errno));
+            return false;
+        }
+        if (WEXITSTATUS(status) != 0) {
+            fprintf(stderr, "bass: error: `%s` returned exit code: %d\n", path, WEXITSTATUS(status));
             return false;
         }
     }
@@ -81,20 +84,20 @@ bool run_command(const char *path, char **args) {
 bool compile_program(Labels labels, OpCodes opcodes, const char *output_file) {
     if (!compile("bass-compiled.s", labels, opcodes)) return false;
 
-    run_command("nasm", (char *[]){
+    if (!run_command("nasm", (char *[]){
         "nasm",
         "-g",
         "-f", "elf64",
         "bass-compiled.s",
         "-o", "bass-compiled.o",
         NULL
-    });
-    run_command("ld", (char *[]){
+    })) return false;
+    if (!run_command("ld", (char *[]){
         "ld",
         "bass-compiled.o",
         "-o", (char *)output_file,
         NULL
-    });
+    })) return false;
     return true;
 }
 
@@ -183,10 +186,7 @@ int main(int argc, char *argv[]) {
             }
             fprintf(stderr, "bass: compiled to: %s\n", output_path);
         } else {
-            if (!interpret_program(labels, opcodes)) {
-                fprintf(stderr, "bass: failed to run `%s`\n", source_files.data[i]);
-                return 1;
-            }
+            if (!interpret_program(labels, opcodes)) return 1;
         }
         // TODO: use a string builder instead to not have to free each iteration
         free((void*)sv.data);

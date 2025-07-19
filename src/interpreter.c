@@ -23,22 +23,6 @@ static inline int eval_int(State *state, Operand operand) {
     }
 }
 
-// evaluates values that are treated as chars
-static inline int eval_char(State *state, Operand operand) {
-    switch (operand.type) {
-    case TOK_LITERAL_NUM:
-        return operand.as_int;
-    case TOK_REGISTER:
-        return state->registers[operand.as_int];
-    case TOK_ADDRESS:
-        return *(char *)(&state->memory[operand.as_int]);
-    case TOK_ADDRESS_REG:
-        return *(char *)(&state->memory[state->registers[operand.as_int]]);
-    default:
-        UNREACHABLE_INFO("Passed in value was not a character!");
-    }
-}
-
 static inline void set_lval(State *state, OpCode *op, int rval) {
     // first operand is always the lvalue to be set
     Operand lval = op->operands[0];
@@ -73,26 +57,16 @@ static inline void execute_print(State *state, Operand operand) {
 
 
 static inline bool execute_print_bytes(State *state, OpCode *opcode) {
-    Operand operand = opcode->operands[0];
-    char *start = 0;
-    switch (operand.type) {
-    case TOK_LITERAL_NUM: start = (char *)&operand.as_int; break;
-    case TOK_REGISTER: start = (char *)&state->registers[operand.as_int]; break;
-    case TOK_ADDRESS: start = (char *)(&state->memory[operand.as_int]); break;
-    case TOK_ADDRESS_REG: start = (char *)(&state->memory[state->registers[operand.as_int]]); break;
-    default:
-        UNREACHABLE_INFO("Passed in value was not a character");
-    }
-
+    int index = eval_int(state, opcode->operands[0]);
     int count = eval_int(state, opcode->operands[1]);
-    if (count >= MEMORY_SIZE) {
-        fprintf(stderr, "bass:%d:%zu: error: string access will go out of bounds at opcode `%s`, "
-                "memory size is %d bytes, but string length is %d\n",
-                opcode->line, opcode->col, OPCODES[opcode->op].name, MEMORY_SIZE, count);
+    if (count >= MEMORY_SIZE || index >= MEMORY_SIZE) {
+        fprintf(stderr, "bass:%d:%zu: error: string access out of bounds at opcode `%s`, "
+                "memory size is %d bytes, but string is starts from %d with length %d\n",
+                opcode->line, opcode->col, OPCODES[opcode->op].name, MEMORY_SIZE, index, count);
         return false;
     }
-    for (int i = 0; i < count; i++) {
-        putchar(start[i]);
+    for (int i = index; i < count; i++) {
+        putchar(state->memory[i]);
     }
     return true;
 }
@@ -224,8 +198,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
         int index = eval_int(state, opcode->operands[0]);
         int count = eval_int(state, opcode->operands[1]);
         if (fgets((void*)&state->memory[index], count, stdin) == NULL) {
-            fprintf(stderr, "bass:%d:%zu: error: failed to read from stdin at opcode `%s`\n",
-                    opcode->line, opcode->col, OPCODES[opcode->op].name);
+            // most probably caused by CTRL-D (EOF), simply stop execution
             return false;
         }
         state->memory[strcspn((void*)&state->memory[index], "\n")] = 0;
@@ -236,6 +209,7 @@ bool execute_opcode(State *state, OpCode *opcode) {
     return true;
 }
 
+// TODO: check out of bounds memory accesses
 bool interpret(State *state, OpCodes opcodes) {
     while (state->reg_pc < opcodes.size) {
         OpCode op = opcodes.data[state->reg_pc++];

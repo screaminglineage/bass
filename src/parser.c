@@ -126,13 +126,19 @@ bool parse_operands(Parser *parser, OpType op_type, TokenType start, TokenType e
             return false;
         }
         if (start <= operand.type && operand.type <= end) {
-            if (i == 0 && opcode_data.sets_operand && operand.type == TOK_LITERAL_NUM) {
-                fprintf(stderr, "bass:%d:%zu: error: cannot write into a %s: `%.*s` "
-                    "at opcode `%s`, expected a register or memory address instead\n"
-                    "help: check if you put a `#` instead of a `r` or `@`\n",
-                    operand.line, operand.col, TOKEN_STRING[operand.type],
-                    SV_FORMAT(operand.str), opcode_data.name);
-                return false;
+            // TODO: encode this data into the OPCODES table instead
+            // maybe convert `sets_operand` into `cannot_write_to_1st_operand` or something
+            // load, store, and read can "set" numeric values as they
+            // write to the memory address of the operand
+            if (op_type != OP_STORE && op_type != OP_LOAD && op_type != OP_READ) {
+                if (i == 0 && opcode_data.sets_operand && operand.type == TOK_LITERAL_NUM) {
+                    fprintf(stderr, "bass:%d:%zu: error: cannot write into a %s: `%.*s` "
+                            "at opcode `%s`, expected a register or memory address instead\n"
+                            "help: check if you put a `#` instead of a `r` or `@`\n",
+                            operand.line, operand.col, TOKEN_STRING[operand.type],
+                            SV_FORMAT(operand.str), opcode_data.name);
+                    return false;
+                }
             }
             opcode->operands[i] = operand;
         } else {
@@ -249,7 +255,8 @@ bool next_token(Parser *parser, Token *token) {
                     parser->line, get_col(parser) + 2);
                 return false;
 
-            } else {
+            // TODO: weird parsing here, needs some rewrite?
+            } else if (peek(parser) == 'r') {
                 // resetting parser to prevent `@` being picked up in parse_identifier
                 parser->start = parser->end;
                 // parsing as address at register
@@ -260,12 +267,16 @@ bool next_token(Parser *parser, Token *token) {
                     return false;
                 }
                 if (!parse_register(string, &num)) {
-                    fprintf(stderr, "bass:%d:%zu: error: expected register or number after `@` got `%c`\n",
-                            parser->line, get_col(parser),
-                            (string.length > 0)? string.data[0]: peek(parser));
+                    fprintf(stderr, "bass:%d:%zu: error: `%.*s` is neither a valid register nor numeric literal, after `@`\n",
+                            parser->line, get_col(parser), SV_FORMAT(string));
                     return false;
                 }
                 *token = make_token(parser, TOK_ADDRESS_REG, ((StringView){string.data-1, string.length+1}), num);
+            } else {
+                fprintf(stderr, "bass:%d:%zu: error: expected register or number after `@` got `%c`\n",
+                        parser->line, get_col(parser),
+                        (string.length > 0)? string.data[0]: peek(parser));
+                return false;
             }
         } break;
 

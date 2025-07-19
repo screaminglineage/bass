@@ -27,9 +27,13 @@ println r0
 ; Finally, store can also be used to directly write strings into
 ; memory, which can then be printed using printb and printbln
 ; They can also be accessed as individual bytes through other opcodes
+;
+; Just like load and store, printb and printbln treats the first operand
+; as a memory address
 
-store r0 "hello world"
-printbln @r0 #11
+move r0 #0
+store r0 "hello world"  ; stores 'hello world' at memory address #0
+printbln r0 #11
 
 ; Note that print works on ints (4 bytes) while printb works on a single byte
 ; So the following will not work, instead printing a number formed by
@@ -39,5 +43,5 @@ println @r0
 
 ; Use printb/printbln with a length of 1 to print a single character
 
-printbln @r0 #1     ; prints 'h'
+printbln r0 #1     ; prints 'h'
 

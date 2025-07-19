@@ -1,0 +1,7 @@
+_:
+    print "> "
+    read #0 #64
+    printbln #0 #64
+    jump _
+
+

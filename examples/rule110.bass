@@ -28,7 +28,7 @@ jump start
 rule110:
     move r5 #0
 loop110:
-    cmp r5 #10          ; Modify if array size is changed (also see in print)
+    cmp r5 #10          ; Modify if array size is changed (also see in label print110)
     jumpz end
 
     sub r1 r0 #4
@@ -89,7 +89,7 @@ end:
     move r4 #0              ; Ensure r4 is 0
 
 print110:
-    cmp r4 #10             ; Modify if array size is changed (also see in rule110)
+    cmp r4 #10             ; Modify if array size is changed (also see in label loop110)
     jumpz next
 
     cmp @r0 #0
