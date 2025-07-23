@@ -1,6 +1,9 @@
 - Add a Conditional Move operand (See examples/fib_rec.bass for what it might improve) [Eg: cmov from x86_64]
 - Maybe add a Conditional Call as well (??) 
 - Rewrite `rule110` example
+- Document which `compile_` functions can destroy general purpose registers and which dont
 - Allocate memory before doing anything else
     - offset each memory access with the bass address from above
     - same probably needs to be done separately for the `read`, `printb` opcodes as they use syscalls which expect to read the memory address from the value passed into `rsi`
+    - store the start of allocated memory to a register
+        - `rcx` has the least usages so far (in `compile_two_step_instruction` and `compile_print_int`)

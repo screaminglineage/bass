@@ -5,8 +5,8 @@
 #define MB 1024*KB
 
 #define REG_COUNT 8
-#define STACK_MAX 2*KB
-#define MEMORY_SIZE 4*MB
+#define STACK_MAX (2*KB)
+#define MEMORY_SIZE (4*MB)
 #define MAX_OPERANDS 3
 #define DEFAULT_COMPILER_OUTPUT "bass-compiled"
 
