@@ -57,16 +57,16 @@ static inline void execute_print(State *state, Operand operand) {
 
 
 static inline bool execute_print_bytes(State *state, OpCode *opcode) {
-    int index = eval_int(state, opcode->operands[0]);
+    int start = eval_int(state, opcode->operands[0]);
     int count = eval_int(state, opcode->operands[1]);
-    if (count >= MEMORY_SIZE || index >= MEMORY_SIZE) {
+    if (count >= MEMORY_SIZE || start >= MEMORY_SIZE) {
         fprintf(stderr, "bass:%d:%zu: error: string access out of bounds at opcode `%s`, "
                 "memory size is %d bytes, but string is starts from %d with length %d\n",
-                opcode->line, opcode->col, OPCODES[opcode->op].name, MEMORY_SIZE, index, count);
+                opcode->line, opcode->col, OPCODES[opcode->op].name, MEMORY_SIZE, start, count);
         return false;
     }
-    for (int i = index; i < count; i++) {
-        putchar(state->memory[i]);
+    for (int i = 0; i < count; i++) {
+        putchar(state->memory[start + i]);
     }
     return true;
 }
