@@ -1,3 +1,4 @@
+#include "constants.h"
 #include "utils.h"
 #include "parser.h"
 #include <stdbool.h>
@@ -6,12 +7,16 @@
 #include <stdio.h>
 #include "compiler.h"
 
+// TODO: support windows compilation
+#ifdef _WIN32
+#error "Compiling on windows is not yet supported"
+#endif
 
 void compile_value_read(FILE *f, Operand *operand) {
     switch (operand->type) {
         case TOK_IDENTIFIER: {
             if (string_view_eq(operand->str, SV("_"))) {
-                fprintf(f, "_start");
+                fprintf(f, ENTRY_POINT_NAME);
             } else {
                 fprintf(f, "%.*s", SV_FORMAT(operand->str));
             }
@@ -90,14 +95,12 @@ void compile_instruction_to_str(FILE *f, const char *instruction, const char *de
 
 // TODO: come up with a better name for this function
 void compile_two_step_instruction(FILE *f, const char *instruction, OpCode *opcode) {
-    // TODO: save and restore rcx?
     compile_instruction_to_str(f, "mov", "rcx", &opcode->operands[1]);
     compile_instruction_to_str(f, instruction, "rcx", &opcode->operands[2]);
     compile_mov_from_str(f, &opcode->operands[0], "rcx");
 }
 
 void compile_print_char(FILE *f, Operand *operand, bool add_newline) {
-    // TODO: save and restore rbp?
     fprintf(f, "    mov rbp, rsp\n");
 
     if (add_newline) {
@@ -171,7 +174,7 @@ void compile_print_int(FILE *f, Operand *operand, bool add_newline) {
 
 
 void compile_read_stdin(FILE *f, Operand *operand_0, Operand *operand_1) {
-    // TODO: make print a function and fix this temporary label hack
+    // TODO: make read a function and fix this temporary label hack
     static int read_count = 0;
 
     fprintf(f, "    mov rax, 0\n");
@@ -182,22 +185,61 @@ void compile_read_stdin(FILE *f, Operand *operand_0, Operand *operand_1) {
 
     // replacing the first newline with a '\0'
     compile_instruction_to_str(f, "mov", "rax", operand_0);
+    compile_instruction_to_str(f, "mov", "rbx", operand_1);
     fprintf(f, ".read_loop_%d:\n", read_count);
+    fprintf(f, "    cmp rbx, 0\n");
+    fprintf(f, "    jz .read_end_%d\n", read_count);
+    fprintf(f, "    dec rbx\n");
     fprintf(f, "    cmp byte [rax], 0xA\n");
     fprintf(f, "    jz .read_out_%d\n", read_count);
     fprintf(f, "    inc rax\n");
     fprintf(f, "    jmp .read_loop_%d\n", read_count);
     fprintf(f, ".read_out_%d:\n", read_count);
     fprintf(f, "    mov byte [rax], 0\n");
+    fprintf(f, ".read_end_%d:\n", read_count);
 
     read_count++;
 }
 
 void compile_exit_syscall(FILE *f) {
+#ifdef _WIN32
+#error "Cannot compile exit for windows"
+#else
     fprintf(f, "\n\n; exit syscall\n");
     fprintf(f, "    mov rax, 60\n");
     fprintf(f, "    mov rdi, 0\n");
     fprintf(f, "    syscall\n");
+#endif
+}
+
+
+void compile_mmap_syscall(FILE *f, size_t len) {
+#ifdef _WIN32
+#error "Cannot compile mmap for windows"
+#else
+    fprintf(f, "\n\n; mmap syscall\n");
+
+    fprintf(f, "    push r8\n");
+    fprintf(f, "    push r9\n");
+    fprintf(f, "    push r10\n");
+
+    // mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
+    fprintf(f, "    mov rax, 9\n");
+    fprintf(f, "    mov rdi, 0\n");
+    fprintf(f, "    mov rsi, %zu\n", len);
+    fprintf(f, "    mov rdx, 1 | 2\n");
+    fprintf(f, "    mov r10, 2 | 32\n");
+    fprintf(f, "    mov r8, -1\n");
+    fprintf(f, "    mov r9, 0\n");
+    fprintf(f, "    syscall\n");
+
+    // TODO: check rax for MAP_FAILED?
+    // TODO: where to store pointer to allocated memory? (data section?)
+
+    fprintf(f, "    pop r10\n");
+    fprintf(f, "    pop r9\n");
+    fprintf(f, "    pop r8\n");
+#endif
 }
 
 
@@ -240,7 +282,6 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 // TODO: check for overflow and division by zero
                 compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int / opcode->operands[2].as_int);
             } else {
-                // TODO: save and restore rax and rbx
                 // rdx needs to be zeroed
                 fprintf(f, "    mov rdx, 0\n");
                 // mov rax, x2
@@ -267,7 +308,6 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 // TODO: check for overflow and division by zero
                 compile_mov_to_operand(f, &opcode->operands[0], opcode->operands[1].as_int % opcode->operands[2].as_int);
             } else {
-                // TODO: save and restore rax, rbx, rdx
                 // rdx needs to be zeroed
                 fprintf(f, "    mov rdx, 0\n");
                 // mov rax, x2
@@ -358,7 +398,6 @@ bool compile_opcode(FILE *f, OpCode *opcode) {
                 compile_instruction_to_str(f, "mov", "rbx", &opcode->operands[1]);
                 fprintf(f, "    cmp rax, rbx\n");
             } else if (opcode->operands[0].type == TOK_ADDRESS || opcode->operands[0].type == TOK_ADDRESS_REG) {
-                // TODO: save and restore rax?
                 compile_instruction_to_str(f, "mov", "rax", &opcode->operands[0]);
                 compile_instruction_to_str(f, "cmp", "rax", &opcode->operands[1]);
             } else {
@@ -423,40 +462,38 @@ bool compile(const char *output_path, Labels labels, OpCodes opcodes) {
     fprintf(f, "section .text\n");
     fprintf(f, "    global _start\n");
     fprintf(f, "\n");
+    fprintf(f, "_start:\n");
 
-    // TODO: make sure that r8-r15 are all set to 0
-    // TODO: allocate memory for `@` instructions
+    // initializing allocated registers for bass to 0
+    for (int i = 8; i <= 15; i++) {
+        fprintf(f, "    xor r%d, r%d\n", i, i);
+    }
+
+    // TODO: save rax returned by mmap somewhere
+    compile_mmap_syscall(f, MEMORY_SIZE);
 
     int entry = find_label(&labels, SV("_"));
-    if (entry == -1) {
-        fprintf(f, "_start:\n");
+    if (entry != -1) {
+        labels.data[entry].name = SV(ENTRY_POINT_NAME);
+        fprintf(f, "    jmp %s\n", ENTRY_POINT_NAME);
     }
-    size_t entry_index = entry;
 
     size_t i = 0, j = 0;
     while (i < labels.size && j < opcodes.size) {
-        while (i < labels.size && j == labels.data[i].index) {
-            if (i == entry_index) {
-                fprintf(f, "_start:\n");
-            } else {
-                fprintf(f, "%.*s: ; (opcode: %s)\n",
-                        SV_FORMAT(labels.data[i].name),
-                        OPCODES[opcodes.data[labels.data[i].index].op].name);
-            }
-            i++;
-        }
-        compile_opcode(f, &opcodes.data[j]);
-        j++;
-    }
-
-    for (; i < labels.size; i++) {
-        if (i == entry_index) {
-            fprintf(f, "_start:\n");
-        } else {
+        if (labels.data[i].index == j) {
             fprintf(f, "%.*s: ; (opcode: %s)\n",
                     SV_FORMAT(labels.data[i].name),
                     OPCODES[opcodes.data[labels.data[i].index].op].name);
+            i++;
+        } else {
+            compile_opcode(f, &opcodes.data[j++]);
         }
+    }
+
+    for (; i < labels.size; i++) {
+        fprintf(f, "%.*s: ; (opcode: %s)\n",
+                SV_FORMAT(labels.data[i].name),
+                OPCODES[opcodes.data[labels.data[i].index].op].name);
     }
 
     for (; j < opcodes.size; j++) {

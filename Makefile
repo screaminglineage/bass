@@ -32,4 +32,4 @@ examples: bass examples/
 
 .PHONY: clean
 clean:
-	rm bass
+	rm bass *.s *.o
